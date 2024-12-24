@@ -1,0 +1,22 @@
+# REST API Generation
+fastapi~=0.114
+hypercorn~=0.17
+uvicorn
+aio-pika
+requests
+httpx
+httpx
+pydantic~=2.9
+SQLAlchemy~=2.0
+aiosqlite~=0.20
+coloredlogs~=15.0
+PyYAML~=6.0
+aio-pika
+pyjwt~=2.6
+python-jose[cryptography]==3.3.0
+# Consul library
+python-consul2==0.1.5
+dnspython==2.2.1
+ifaddr
+python-dotenv
+git+https://github.com/ErFosi/global_variables.git

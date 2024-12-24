@@ -1,0 +1,240 @@
+version: '3.8'
+
+services:
+  # Servicio Consul
+  consul:
+    image: hashicorp/consul:1.16.0
+    container_name: consul
+    ports:
+      - '8300:8300'
+      - '8301:8301'
+      - '8301:8301/udp'
+      - '8500:8500'     # Port For Consul Web UI
+      - '8600:8600'
+      - '8600:8600/udp'
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:8500/" ]
+      interval: 2s
+      timeout: 2s
+      retries: 10
+    restart: always
+
+  rabbitmq:
+    image: rabbitmq:3-management   # Usa la versión con interfaz de administración
+    container_name: rabbitmq
+    ports:
+      - "5671:5671"                # Puerto para la comunicación entre los servicios
+      - "15672:15672"
+      - "15671:15671"
+
+    volumes:
+      - './keys:/etc/ssl/certs'   # Monta el directorio con los certificados
+      - './rabbitmq:/etc/rabbitmq' # Configuración personalizada de RabbitMQ# Puerto para la interfaz de administración
+    healthcheck:
+      test: ["CMD", "rabbitmqctl", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+
+  machine:
+    build: ./machine/fastapi_app/.
+    ports:
+      - '8001:8000'
+    volumes:
+      - './machine/fastapi_app:/code'
+      - './machine/db_volume:/volume'
+      - './keys:/keys'
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      consul:
+        condition: service_healthy
+    environment:
+      PYTHONUNBUFFERED: 1
+      SQLALCHEMY_DATABASE_URL: ${SQLALCHEMY_SQLITE_DATABASE_URI}
+      CONSUL_HOST: consul
+    restart: on-failure
+    #command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload --ssl-keyfile /keys/priv.pem --ssl-certfile /keys/cert.pem
+
+  orders:
+    build: ./orders/fastapi_app/.
+    ports:
+      - '8002:8000'
+    volumes:
+      - './orders/fastapi_app:/code'
+      - './orders/db_volume:/volume'
+      - './keys:/keys'
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      consul:
+        condition: service_healthy
+    environment:
+      PYTHONUNBUFFERED: 1
+      SQLALCHEMY_DATABASE_URL: ${SQLALCHEMY_SQLITE_DATABASE_URI}
+      CONSUL_HOST: consul
+    restart: on-failure
+    #command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload --ssl-keyfile /keys/priv.pem --ssl-certfile /keys/cert.pem
+
+  delivery:
+    build: ./delivery/fastapi_app/.
+    ports:
+      - '8003:8000'
+    volumes:
+      - './delivery/fastapi_app:/code'
+      - './delivery/db_volume:/volume'
+      - './keys:/keys'
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      consul:
+        condition: service_healthy
+    environment:
+      PYTHONUNBUFFERED: 1
+      SQLALCHEMY_DATABASE_URL: ${SQLALCHEMY_SQLITE_DATABASE_URI}
+      CONSUL_HOST: consul
+    restart: on-failure
+    #command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload --ssl-keyfile /keys/priv.pem --ssl-certfile /keys/cert.pem
+
+  client:
+    build: ./client/fastapi_app/.
+    ports:
+      - '8004:8000'
+    volumes:
+      - './client/fastapi_app:/code'
+      - './client/db_volume:/volume'
+      - './keys:/keys'
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      consul:
+        condition: service_healthy
+    environment:
+      PYTHONUNBUFFERED: 1
+      SQLALCHEMY_DATABASE_URL: ${SQLALCHEMY_SQLITE_DATABASE_URI}
+      CONSUL_HOST: consul
+    restart: on-failure
+    #command: >
+      #sh -c "sqlite3 /volume/monolithic.db < /volume/init_db.sql &&
+             #uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload --ssl-keyfile /keys/priv.pem --ssl-certfile /keys/cert.pem"
+
+  payment:
+    build: ./payment/fastapi_app/.
+    ports:
+      - '8005:8000'
+    volumes:
+      - './payment/fastapi_app:/code'
+      - './payment/db_volume:/volume'
+      - './keys:/keys'
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      consul:
+        condition: service_healthy
+    environment:
+      PYTHONUNBUFFERED: 1
+      SQLALCHEMY_DATABASE_URL: ${SQLALCHEMY_SQLITE_DATABASE_URI}
+      CONSUL_HOST: consul
+    restart: on-failure
+    #command: sh -c "sqlite3 /volume/monolithic.db < /volume/init_db.sql &&
+             #uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload --ssl-keyfile /keys/priv.pem --ssl-certfile /keys/cert.pem"
+
+  logging:
+    build: ./log/fastapi_app/.
+    ports:
+      - '8009:8000'
+    volumes:
+      - './log/fastapi_app:/code'
+      - './log/db_volume:/volume'
+      - './keys:/keys'
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      consul:
+        condition: service_healthy
+    environment:
+      PYTHONUNBUFFERED: 1
+      INFLUXDB_URL: "https://influxdb:8086"
+      INFLUXDB_TOKEN: "your-influxdb-token"
+      INFLUXDB_ORG: "your-org"
+      INFLUXDB_BUCKET: "your-bucket"
+      SQLALCHEMY_DATABASE_URL: ${SQLALCHEMY_SQLITE_DATABASE_URI}
+      CONSUL_HOST: consul
+    restart: on-failure
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload --ssl-keyfile /keys/priv.pem --ssl-certfile /keys/cert.pem
+
+  influxdb:
+    image: influxdb
+    container_name: influxdb
+    ports:
+      - "8086:8086"  # HTTPS
+    environment:
+      DOCKER_INFLUXDB_INIT_MODE: setup
+      DOCKER_INFLUXDB_INIT_USERNAME: admin
+      DOCKER_INFLUXDB_INIT_PASSWORD: adminpassword
+      DOCKER_INFLUXDB_INIT_ORG: your-org
+      DOCKER_INFLUXDB_INIT_BUCKET: your-bucket
+    volumes:
+      - ./influxdb_data:/var/lib/influxdb2
+      - ./keys:/keys  # Mount your certificates
+    command: >
+      influxd
+      --tls-cert=/keys/server_cert.pem
+      --tls-key=/keys/server_key.pem
+
+  gateway:
+    build: ./gatewayAPI/fastapi_app/.
+    ports:
+      - '8000:8000'
+    volumes:
+      - './gatewayAPI/fastapi_app:/code'
+      - './gatewayAPI/db_volume:/volume'
+      - './keys:/keys'
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    environment:
+      PYTHONUNBUFFERED: 1
+      SQLALCHEMY_DATABASE_URL: ${SQLALCHEMY_SQLITE_DATABASE_URI}
+    restart: on-failure
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload --ssl-keyfile /keys/priv.pem --ssl-certfile /keys/cert.pem
+
+  gateway2:
+    build: ./gatewayAPI2/fastapi_app/.
+    ports:
+      - '8006:8000'
+    volumes:
+      - './gatewayAPI2/fastapi_app:/code'
+      - './gatewayAPI2/db_volume:/volume'
+      - './keys:/keys'
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    environment:
+      PYTHONUNBUFFERED: 1
+      SQLALCHEMY_DATABASE_URL: ${SQLALCHEMY_SQLITE_DATABASE_URI}
+    restart: on-failure
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload --ssl-keyfile /keys/priv.pem --ssl-certfile /keys/cert.pem
+
+  haproxy:
+    image: haproxy:latest
+    container_name: haproxy
+    ports:
+      - "8080:8080"
+      - '${HAPROXY_STATS_PORT}:${HAPROXY_STATS_PORT}'
+    volumes:
+      - './haproxy.cfg:/usr/local/etc/haproxy/haproxy.cfg'
+      - ./haproxy.cfg/503_error.html:/usr/local/etc/haproxy/503_error.html
+      - './keys:/keys'
+    depends_on:
+      - machine
+      - orders
+      - delivery
+      - client
+      - payment
+      - rabbitmq
+    env_file:
+      - .env
