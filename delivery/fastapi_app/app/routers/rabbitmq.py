@@ -4,6 +4,8 @@ import json
 from app.sql.database import SessionLocal  # pylint: disable=import-outside-toplevel
 from app.sql import crud, models
 from app import dependencies
+from app.consul_router import get_consul_service
+import requests
 from app.routers import rabbitmq_publish_logs
 import ssl
 import logging
@@ -21,7 +23,7 @@ channel = None
 exchange_commands = None
 exchange = None
 exchange_commands_name = 'commands'
-exchange_name = 'exchange'
+exchange_name = 'events'
 exchange_responses_name = 'responses'
 exchange_responses = None
 
@@ -65,8 +67,11 @@ async def subscribe_channel():
             durable=True
         )
 
-
-        exchange_responses = await channel.declare_exchange(name=exchange_responses_name, type='topic', durable=True)
+        exchange_responses = await channel.declare_exchange(
+            name=exchange_responses_name,
+            type='topic',
+            durable=True
+        )
         logger.info(f"Intercambio '{exchange_name}' declarado con éxito")
         rabbitmq_working=True
         set_rabbitmq_status(True)
@@ -93,7 +98,7 @@ async def on_message_delivery_cancel(message):
                         return
 
                     # Actualizar el estado de la entrega
-                    updated_delivery = await crud.update_delivery(db, delivery.order_id, "Canceled")
+                    updated_delivery = await crud.update_delivery(db, delivery.order_id, models.Delivery.STATUS_CANCELED)
                     if not updated_delivery:
                         logger.error("Error al actualizar la entrega para el pedido %s", order['order_id'])
                         return
@@ -101,7 +106,10 @@ async def on_message_delivery_cancel(message):
                     logger.info("Entrega actualizada: %s", updated_delivery)
 
             # Preparar y publicar el mensaje de respuesta
-            data = {"id_order": order['order_id']}
+            data = {
+                "id_order": order['order_id'],
+                "id_client": order['id_client']
+            }
             message_body = json.dumps(data)
             routing_key = "delivery.canceled"
             await publish_response(message_body, routing_key)
@@ -128,9 +136,12 @@ async def on_produced_message(message):
         order = json.loads(message.body)
         db = SessionLocal()
         db_delivery = await crud.get_delivery_by_order_id(db, order['id_order'])
-        # db_delivery = await crud.change_delivery_status(db, db_delivery.id_delivery, models.Delivery.STATUS_DELIVERING)
-        await db.close()
-        asyncio.create_task(send_product(db_delivery))
+        if db_delivery.status != models.Delivery.STATUS_CANCELED:
+            db_delivery = await crud.update_delivery(db, order['id_order'], models.Delivery.STATUS_DELIVERING)
+            await db.close()
+            asyncio.create_task(send_product(db_delivery))
+        else:
+            await db.close()
 
 async def on_create_message(message):
     async with message.process():
@@ -140,18 +151,15 @@ async def on_create_message(message):
         address_check = await crud.check_address(db, order["id_client"])
         data = {
             "id_order": order["id_order"],
+            "id_client": order['id_client'],
             "status": address_check
         }
         if address_check:
-            status_delivery_address_check = "in progress"
+            status_delivery_address_check = models.Delivery.STATUS_CREATED
         else:
-            status_delivery_address_check = "cancelled"
+            status_delivery_address_check = models.Delivery.STATUS_CANCELED
 
-        delivery = await crud.create_delivery(db, order["id_order"], order["id_client"], status_delivery_address_check)
-        message, routing_key = await rabbitmq_publish_logs.formato_log_message("info",
-                                                                               "delivery creado correctamente para el order " + str(
-                                                                                   delivery.order_id))
-        await rabbitmq_publish_logs.publish_log(message, routing_key)
+        await crud.create_delivery(db, order["id_order"], order["id_client"], status_delivery_address_check)
         message = json.dumps(data)
         routing_key = "delivery.checked"
         await publish_response(message, routing_key)
@@ -171,38 +179,27 @@ async def subscribe_delivery_check():
 
 async def subscribe_produced():
     # Create queue
-    queue_name = "events.order.produced"
+    queue_name = "orders.produced"
     queue = await channel.declare_queue(name=queue_name, exclusive=True)
     # Bind the queue to the exchange
-    routing_key = "events.order.produced"
+    routing_key = "orders.produced"
     await queue.bind(exchange=exchange_name, routing_key=routing_key)
     # Set up a message consumer
     async with queue.iterator() as queue_iter:
         async for message in queue_iter:
             await on_produced_message(message)
 
-async def subscribe_create():
-    # Create queue
-    queue_name = "events.order.created"
-    queue = await channel.declare_queue(name=queue_name, exclusive=True)
-    # Bind the queue to the exchange
-    routing_key = "events.order.created"
-    await queue.bind(exchange=exchange_name, routing_key=routing_key)
-    # Set up a message consumer
-    async with queue.iterator() as queue_iter:
-        async for message in queue_iter:
-            await on_create_message(message)
-
 
 async def send_product(delivery):
     logger.debug("HE ENTRADO")
     data = {
-        "id_order": delivery.order_id
+        "id_order": delivery.order_id,
+        "id_client": delivery.id_client
     }
     message_body = json.dumps(data)
 
     # Publica el evento inicial con el estado "in process"
-    routing_key = "events.order.inprocess"
+    routing_key = "order.delivering"
     try:
         await publish_event(message_body, routing_key)
     except Exception as e:
@@ -210,7 +207,7 @@ async def send_product(delivery):
         return  # O maneja el error según sea necesario
 
     # Espera de 10 segundos
-    await asyncio.sleep(1)
+    await asyncio.sleep(10)
 
     # Actualiza el estado del delivery en la base de datos
     async with dependencies.get_db() as db:
@@ -220,7 +217,7 @@ async def send_product(delivery):
                 logger.error(f"Delivery con ID {delivery.id} no encontrado")
                 return
 
-            db_delivery = await crud.update_delivery(db, delivery.order_id)
+            db_delivery = await crud.update_delivery(db, delivery.order_id, models.Delivery.STATUS_DELIVERED)
             if db_delivery is None:
                 logger.error(f"No se pudo actualizar el estado del delivery para ID {delivery.id}")
                 return
@@ -230,35 +227,107 @@ async def send_product(delivery):
             logger.error(f"Error al obtener o actualizar el delivery: {e}")
             return
 
-    # Cambia el routing_key en función del estado del delivery
-    if db_delivery.status == models.Delivery.STATUS_CREATED:
-        routing_key = "events.order.delivered"
-    elif db_delivery.status == models.Delivery.STATUS_COMPLETED:
-        routing_key = "events.order.delivered"
-    else:
-        # En caso de otros estados, puedes definir un routing_key predeterminado o manejar el error
-        logger.warning(f"Estado inesperado para el delivery {db_delivery.id}: {db_delivery.status}")
-        await db.close()
-        return  # Puedes retornar o manejar la condición de error de otra forma
-
-    # Publica el evento final basado en el estado actualizado
-    try:
-        await publish_event(message_body, routing_key)
-    except Exception as e:
-        logger.error(f"Error al publicar el evento final: {e}")
-        await db.close()
-        return
-
-    # Publica el log del cambio de estado
-    try:
-        message, routing_key = rabbitmq_publish_logs.formato_log_message("info",
-                                                                         f"Delivery actualizado a {db_delivery.status} correctamente para el order {db_delivery.order_id}")
-        await rabbitmq_publish_logs.publish_log(message, routing_key)
-    except Exception as e:
-        logger.error(f"Error al publicar el log: {e}")
+    routing_key = "order.delivered"
+    await publish_event(message_body, routing_key)
 
     # Cierra la sesión de la base de datos
     await db.close()
+
+
+async def on_message_order_cancel_delivery_pending(message):
+    async with message.process():
+        order = json.loads(message.body)
+        db = SessionLocal()
+        delivery = await crud.get_delivery_by_order(db, order['id_order'])
+        status = False
+        if delivery.status_delivery == models.Delivery.STATUS_CREATED:
+            await crud.update_delivery(db, order['id_order'], models.Delivery.STATUS_CANCELED)
+            status = True
+        await db.close()
+        data = {
+            "id_order": order['id_order'],
+            "status": status
+        }
+        message_body = json.dumps(data)
+        routing_key = "delivery.checked_cancel"
+        await publish_response(message_body, routing_key)
+
+
+async def subscribe_order_cancel_delivery_pending():
+    # Create queue
+    queue_name = "delivery.check_cancel"
+    queue = await channel.declare_queue(name=queue_name, exclusive=False)
+    # Bind the queue to the exchange
+    routing_key = "delivery.check_cancel"
+    await queue.bind(exchange=exchange_commands_name, routing_key=routing_key)
+    # Set up a message consumer
+    async with queue.iterator() as queue_iter:
+        async for message in queue_iter:
+            await on_message_order_cancel_delivery_pending(message)
+
+
+async def on_client_updated_message(message):
+    async with message.process():
+        client = json.loads(message.body)
+
+        db = SessionLocal()
+        info_client = models.Client(
+            id_client=client['id_client'],
+            address=client['address'],
+            zip_code=client['zip_code']
+        )
+        await crud.update_address(db, info_client)
+        await db.close()
+
+
+async def subscribe_client_updated():
+    # Create a queue
+    queue_name = "client.updated"
+    queue = await channel.declare_queue(name=queue_name, exclusive=False)
+    # Bind the queue to the exchange
+    routing_key = "client.updated"
+    await queue.bind(exchange=exchange_name, routing_key=routing_key)
+    # Set up a message consumer
+    async with queue.iterator() as queue_iter:
+        async for message in queue_iter:
+            await on_client_updated_message(message)
+
+
+async def on_client_created_message(message):
+    async with message.process():
+        client = json.loads(message.body)
+        db = SessionLocal()
+        info_client = models.Client(
+            id_client=client['id_client'],
+            address=client['address'],
+            zip_code=client['zip_code']
+        )
+        await crud.update_address(db, info_client)
+        await db.close()
+
+
+async def subscribe_client_created():
+    # Create a queue
+    queue_name = "client.created"
+    queue = await channel.declare_queue(name=queue_name, exclusive=False)
+    # Bind the queue to the exchange
+    routing_key = "client.created"
+    await queue.bind(exchange=exchange_name, routing_key=routing_key)
+    # Set up a message consumer
+    async with queue.iterator() as queue_iter:
+        async for message in queue_iter:
+            await on_client_created_message(message)
+
+
+async def publish_commands(message_body, routing_key):
+    # Publish the message to the exchange
+    await exchange_commands.publish(
+        aio_pika.Message(
+            body=message_body.encode(),
+            content_type="text/plain"
+        ),
+        routing_key=routing_key)
+
 
 async def publish_response(message_body, routing_key):
     # Publish the message to the exchange

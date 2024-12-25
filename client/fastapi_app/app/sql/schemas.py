@@ -27,7 +27,7 @@ class UserBase(BaseModel):
         default="calle postas",
         example="calle postas"
     )
-    postal_code: str = Field(
+    zip_code: str = Field(
         description="The postal code of the client.",
         default="01002",
         example="01002"

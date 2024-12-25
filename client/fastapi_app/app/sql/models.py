@@ -39,7 +39,7 @@ class User(Base):
     username = Column(String(256), nullable=False, unique=True)
     password = Column(String(256), nullable=False)
     address = Column(String(256), nullable=False)
-    postal_code = Column(Integer, nullable=False)
+    zip_code = Column(Integer, nullable=False)
     creation_date = Column(DateTime(timezone=True), server_default=func.now())
     rol = Column(String(50), nullable=False, default="user")  # Añadir la columna 'rol'
 

@@ -37,56 +37,11 @@ class BaseModel(Base):
         return {c.name: getattr(self, c.name) for c in self.__table__.columns}
 
 
-class Order(BaseModel):
-    """order database table representation."""
+class Delivery(Base):
     STATUS_CREATED = "Created"
     STATUS_CANCELED = "Canceled"
-    STATUS_FINISHED = "Finished"
+    STATUS_DELIVERING = "Delivering"
     STATUS_DELIVERED = "Delivered"
-    STATUS_PAYMENT_PENDING = "PaymentPending"
-    STATUS_PAYMENT_DONE = "PaymentDone"
-    STATUS_PAYMENT_CANCELED = "PaymentCanceled"
-
-    __tablename__ = "manufacturing_order"
-    id = Column(Integer, primary_key=True)
-    number_of_pieces = Column(Integer, nullable=False)
-    description = Column(TEXT, nullable=False, default="No description")
-    status = Column(String(256), nullable=False, default=STATUS_CREATED)
-
-    pieces = relationship("Piece", back_populates="order", lazy="joined")
-
-    def as_dict(self):
-        """Return the order item as dict."""
-        dictionary = super().as_dict()
-        dictionary['pieces'] = [i.as_dict() for i in self.pieces]
-        return dictionary
-
-
-class Piece(BaseModel):
-    """Piece database table representation."""
-    STATUS_CREATED = "Created"
-    STATUS_CANCELLED = "Cancelled"
-    STATUS_QUEUED = "Queued"
-    STATUS_MANUFACTURING = "Manufacturing"
-    STATUS_MANUFACTURED = "Manufactured"
-
-    __tablename__ = "piece"
-    id = Column(Integer, primary_key=True)
-    manufacturing_date = Column(DateTime(timezone=True), server_default=None)
-    status = Column(String(256), default=STATUS_QUEUED)
-    order_id = Column(
-        Integer,
-        ForeignKey('manufacturing_order.id', ondelete='cascade'),
-        nullable=True)
-
-    order = relationship('Order', back_populates='pieces', lazy="joined")
-
-
-class Delivery(Base):
-    STATUS_IN_PROGRESS = "in progress"
-    STATUS_CREATED = "created"
-    STATUS_CANCELED = "canceled"
-    STATUS_COMPLETED = "completed"
 
     __tablename__ = "deliveries"
 
@@ -95,7 +50,7 @@ class Delivery(Base):
     status = Column(
         Text,
         nullable=False,
-        default=STATUS_IN_PROGRESS,  # Estado inicial permitido
+        default=STATUS_CREATED,
     )
 
 class UserAddress(Base):

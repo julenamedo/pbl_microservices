@@ -102,7 +102,7 @@ async def create_user(db: AsyncSession, user: schemas.UserCreate):
         email=user.email,
         password=hashed_password,
         address=user.address,
-        postal_code=int(user.postal_code),
+        zip_code=int(user.zip_code),
         rol=user_role,
         creation_date=datetime.now()
     )
@@ -112,7 +112,9 @@ async def create_user(db: AsyncSession, user: schemas.UserCreate):
     await db.commit()
     await db.refresh(db_user)  # Refresh to get the auto-generated ID
     data = {
-        "id_client": db_user.id
+        "id_client": db_user.id,
+        "address": db_user.address,
+        "zip_code": db_user.zip_code
     }
     message_body = json.dumps(data)
     routing_key = "client.created"
@@ -125,11 +127,13 @@ async def update_user(db: AsyncSession, client_id, client):
     db_user = await get_user_by_id(db, client_id)
     db_user.email = client.email
     db_user.address = client.address
-    db_user.postal_code = int(client.postal_code)
+    db_user.zip_code = int(client.zip_code)
     await db.commit()
     await db.refresh(db_user)
     data = {
-        "id_client": db_user.id
+        "id_client": db_user.id,
+        "address": db_user.address,
+        "zip_code": db_user.zip_code
     }
     message_body = json.dumps(data)
     routing_key = "client.updated"

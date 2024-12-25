@@ -133,21 +133,6 @@ async def check_address(db: AsyncSession, id_client):
     return address_check
 
 
-async def update_delivery(db: AsyncSession, order_id: int, status: Optional[str]):
-    """Actualizar el estado de un delivery."""
-    async with db.begin():
-        stmt = (
-            update(models.Delivery)
-            .where(models.Delivery.order_id == order_id)
-            .values(
-                status=status if status else models.Delivery.status
-            )
-            .execution_options(synchronize_session="fetch")
-        )
-        result = await db.execute(stmt)
-        await db.commit()
-
-
 async def get_delivery_by_order(db: AsyncSession, order_id: int):
     """Fetch a single delivery by order_id."""
     stmt = select(models.Delivery).where(models.Delivery.order_id == order_id)

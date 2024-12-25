@@ -16,17 +16,12 @@ ssl_context.verify_mode = ssl.CERT_NONE  # No verifica el certificado del servid
 
 # Variables globales
 channel = None
-exchange_logs_name = None
+exchange_logs_name = "log"
 exchange_logs = None
 
-async def subscribe_channel(type: str, ex_name: str):
-    """
-    Conéctate a RabbitMQ utilizando SSL, declara los intercambios necesarios y configura el canal.
 
-    Args:
-        type (str): Tipo de intercambio (e.g., 'direct', 'fanout', 'topic').
-        ex_name (str): Nombre del intercambio a declarar.
-    """
+async def subscribe_channel():
+
     global channel, exchange_logs, exchange_logs_name
 
     try:
@@ -49,10 +44,9 @@ async def subscribe_channel(type: str, ex_name: str):
         logger.info("Canal creado con éxito")
 
         # Declarar el intercambio
-        exchange_logs_name = ex_name
         exchange_logs = await channel.declare_exchange(
             name=exchange_logs_name,
-            type=type,
+            type='topic',
             durable=True
         )
         logger.info(f"Intercambio '{exchange_logs_name}' declarado con éxito")
@@ -61,19 +55,6 @@ async def subscribe_channel(type: str, ex_name: str):
         logger.error(f"Error al suscribirse: {e}")
         raise  # Re-lanzar el error para manejo superior si es necesario
 
-async def formato_log_message(level: str, message: str):
-
-    if level == "debug":
-        logger.debug(message)
-    elif level == "info":
-        logger.info(message)
-    elif level == "warning":
-        logger.warning(message)
-    elif level == "error":
-        logger.error(message)
-
-    routing_key = f"logs.{level}.delivery"
-    return message, routing_key
 
 async def publish_log(message_body, routing_key):
     # Publish the message to the exchange

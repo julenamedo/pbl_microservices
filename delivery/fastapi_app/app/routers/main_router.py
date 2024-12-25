@@ -213,27 +213,28 @@ async def create_address(
     current_user: dict = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """
-    Create a new address.
-    - If id_client is not provided, use current_user["id_client"].
-    """
     id_client = address_data.id_client or current_user["id_client"]
     role = current_user["role"]
 
     # Si el usuario no es admin, verificar que no intente crear para otro id_client
     if role != "admin" and id_client != current_user["id_client"]:
+        data = {
+            "message": "ERROR - You don't have permissions"
+        }
+        message_body = json.dumps(data)
+        routing_key = "delivery.create_address.error"
+        await rabbitmq_publish_logs.publish_log(message_body, routing_key)
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
 
+    data = {
+        "message": "INFO - address created"
+    }
+    message_body = json.dumps(data)
+    routing_key = "delivery.create_address.info"
+    await rabbitmq_publish_logs.publish_log(message_body, routing_key)
     return await crud.create_address(db, id_client, address_data.address, address_data.zip_code)
 
 
-@router.post(
-    "/create_delivery",
-    response_model=schemas.Delivery,
-    summary="Create a new delivery",
-    status_code=status.HTTP_201_CREATED,
-    tags=["Delivery"]
-)
 @router.post(
     "/create_delivery",
     response_model=schemas.Delivery,
@@ -246,25 +247,40 @@ async def create_delivery(
     current_user: dict = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """
-    Create a new delivery.
-    - If id_client is not provided, use current_user["id_client"].
-    """
+
     try:
         id_client = delivery_data.id_client or current_user["id_client"]
         role = current_user["role"]
 
         # Si el usuario no es admin, verificar que no intente crear para otro id_client
         if role != "admin":
+            data = {
+                "message": "ERROR - You don't have permissions"
+            }
+            message_body = json.dumps(data)
+            routing_key = "delivery.create_delivery.error"
+            await rabbitmq_publish_logs.publish_log(message_body, routing_key)
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
 
         logger.debug(f"Attempting to create delivery: id_client={id_client}, order_id={delivery_data.order_id}")
         result = await crud.create_delivery(db, id_client, delivery_data.order_id)
         logger.debug(f"Delivery successfully created: {result}")
+        data = {
+            "message": "INFO - delivery created"
+        }
+        message_body = json.dumps(data)
+        routing_key = "delivery.create_delivery.info"
+        await rabbitmq_publish_logs.publish_log(message_body, routing_key)
         return result
 
     except HTTPException as http_error:
         logger.error(f"HTTP error during delivery creation: {http_error.detail}")
+        data = {
+            "message": "ERROR - HTTP error during delivery creation"
+        }
+        message_body = json.dumps(data)
+        routing_key = "delivery.create_delivery.error"
+        await rabbitmq_publish_logs.publish_log(message_body, routing_key)
         raise http_error
 
     except Exception as e:
@@ -283,21 +299,36 @@ async def get_address(
     current_user: dict = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """
-    Get address.
-    - If id_client is not provided, use current_user["id_client"].
-    """
+
     id_client = id_client or current_user["id_client"]
     role = current_user["role"]
 
     # Si el usuario no es admin, verificar que no intente acceder a otro id_client
     if role != "admin" and id_client != current_user["id_client"]:
+        data = {
+            "message": "ERROR - You don't have permissions"
+        }
+        message_body = json.dumps(data)
+        routing_key = "delivery.get_address.error"
+        await rabbitmq_publish_logs.publish_log(message_body, routing_key)
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
 
     address = await crud.get_address_by_id_client(db, id_client)
     if not address:
+        data = {
+            "message": "ERROR - Address not found"
+        }
+        message_body = json.dumps(data)
+        routing_key = "delivery.get_address.error"
+        await rabbitmq_publish_logs.publish_log(message_body, routing_key)
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Address not found")
 
+    data = {
+        "message": "INFO - address retrieved successfully"
+    }
+    message_body = json.dumps(data)
+    routing_key = "delivery.get_address.info"
+    await rabbitmq_publish_logs.publish_log(message_body, routing_key)
     return address
 
 
@@ -313,21 +344,35 @@ async def get_delivery(
     current_user: dict = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """
-    Get delivery.
-    - Admins can access any delivery.
-    - Regular users can only access their own deliveries.
-    """
+
     role = current_user["role"]
     delivery = await crud.get_delivery_by_order_id(db, order_id)
 
     if not delivery:
+        data = {
+            "message": "ERROR - Delivery not found"
+        }
+        message_body = json.dumps(data)
+        routing_key = "delivery.get_delivery.error"
+        await rabbitmq_publish_logs.publish_log(message_body, routing_key)
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Delivery not found")
 
     # Si el usuario no es admin, verificar que sea el propietario
     if role != "admin" and delivery.id_client != current_user["id_client"]:
+        data = {
+            "message": "ERROR - You don't have permissions"
+        }
+        message_body = json.dumps(data)
+        routing_key = "delivery.get_delivery.error"
+        await rabbitmq_publish_logs.publish_log(message_body, routing_key)
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
 
+    data = {
+        "message": "INFO - delivery retrieved successfully"
+    }
+    message_body = json.dumps(data)
+    routing_key = "delivery.get_delivery.info"
+    await rabbitmq_publish_logs.publish_log(message_body, routing_key)
     return delivery
 
 
@@ -344,21 +389,36 @@ async def update_address(
     current_user: dict = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """
-    Update address.
-    - If id_client is not provided, use current_user["id_client"].
-    """
+
     id_client = id_client or current_user["id_client"]
     role = current_user["role"]
 
     # Si el usuario no es admin, verificar que no intente actualizar otro id_client
     if role != "admin" and id_client != current_user["id_client"]:
+        data = {
+            "message": "ERROR - You don't have permissions"
+        }
+        message_body = json.dumps(data)
+        routing_key = "delivery.update_address.error"
+        await rabbitmq_publish_logs.publish_log(message_body, routing_key)
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
 
     updated_address = await crud.update_address(db, id_client, address_data.address, address_data.zip_code)
     if not updated_address:
+        data = {
+            "message": "ERROR - Address not found"
+        }
+        message_body = json.dumps(data)
+        routing_key = "delivery.update_address.error"
+        await rabbitmq_publish_logs.publish_log(message_body, routing_key)
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Address not found")
 
+    data = {
+        "message": "INFO - address updated successfully"
+    }
+    message_body = json.dumps(data)
+    routing_key = "delivery.update_address.info"
+    await rabbitmq_publish_logs.publish_log(message_body, routing_key)
     return updated_address
 
 
@@ -375,21 +435,35 @@ async def update_delivery(
     current_user: dict = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """
-    Update delivery.
-    - If id_client is not provided, use current_user["id_client"].
-    """
+
     role = current_user["role"]
     delivery = await crud.get_delivery_by_order_id(db, order_id)
 
     if not delivery:
+        data = {
+            "message": "ERROR - Delivery not found"
+        }
+        message_body = json.dumps(data)
+        routing_key = "delivery.update_delivery.error"
+        await rabbitmq_publish_logs.publish_log(message_body, routing_key)
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Delivery not found")
 
     # Si el usuario no es admin, verificar que sea el propietario
     if role != "admin":
+        data = {
+            "message": "ERROR - You don't have permissions"
+        }
+        message_body = json.dumps(data)
+        routing_key = "delivery.update_delivery.error"
+        await rabbitmq_publish_logs.publish_log(message_body, routing_key)
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
 
     updated_delivery = await crud.update_delivery(db, order_id, delivery_data.status)
+    data = {
+        "message": "INFO - delivery updated successfully"
+    }
+    message_body = json.dumps(data)
+    routing_key = "delivery.update_delivery.info"
     return updated_delivery
 
 
@@ -404,20 +478,34 @@ async def delete_address(
     current_user: dict = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """
-    Delete address.
-    - If id_client is not provided, use current_user["id_client"].
-    """
     id_client = id_client or current_user["id_client"]
     role = current_user["role"]
 
     # Si el usuario no es admin, verificar que no intente eliminar otro id_client
     if role != "admin" and id_client != current_user["id_client"]:
+        data = {
+            "message": "ERROR - You don't have permissions"
+        }
+        message_body = json.dumps(data)
+        routing_key = "delivery.delete_address.error"
+        await rabbitmq_publish_logs.publish_log(message_body, routing_key)
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
 
     deleted = await crud.delete_address(db, id_client)
     if not deleted:
+        data = {
+            "message": "ERROR - Address not found"
+        }
+        message_body = json.dumps(data)
+        routing_key = "delivery.delete_address.error"
+        await rabbitmq_publish_logs.publish_log(message_body, routing_key)
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Address not found")
+    data = {
+        "message": "INFO - address deleted successfully"
+    }
+    message_body = json.dumps(data)
+    routing_key = "delivery.delete_address.info"
+    await rabbitmq_publish_logs.publish_log(message_body, routing_key)
 
 
 @router.delete(
@@ -431,21 +519,42 @@ async def delete_delivery(
     current_user: dict = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """
-    Delete delivery.
-    - Admins can delete any delivery.
-    - Regular users can only delete their own deliveries.
-    """
     role = current_user["role"]
     delivery = await crud.get_delivery_by_order_id(db, order_id)
 
     if not delivery:
+        data = {
+            "message": "ERROR - Delivery not found"
+        }
+        message_body = json.dumps(data)
+        routing_key = "delivery.delete_delivery.error"
+        await rabbitmq_publish_logs.publish_log(message_body, routing_key)
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Delivery not found")
 
     # Si el usuario no es admin, verificar que sea el propietario
-    if role != "admin" :
+    if role != "admin":
+        data = {
+            "message": "ERROR - You don't have permissions"
+        }
+        message_body = json.dumps(data)
+        routing_key = "delivery.delete_delivery.error"
+        await rabbitmq_publish_logs.publish_log(message_body, routing_key)
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
 
     deleted = await crud.delete_delivery(db, order_id)
+    if not deleted:
+        data = {
+            "message": "ERROR - Delivery not found"
+        }
+        message_body = json.dumps(data)
+        routing_key = "delivery.delete_delivery.error"
+        await rabbitmq_publish_logs.publish_log(message_body, routing_key)
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Delivery not found")
+    data = {
+        "message": "INFO - Delivery deleted successfully"
+    }
+    message_body = json.dumps(data)
+    routing_key = "delivery.delete_delivery.info"
+    await rabbitmq_publish_logs.publish_log(message_body, routing_key)
     return {"detail": "Delivery deleted successfully"}
 
