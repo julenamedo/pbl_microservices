@@ -215,7 +215,7 @@ async def get_warehouse(
 
     try:
         if current_user["role"] != "admin":
-            logger.warning("Access denied for user_id: %s with role: %s", current_user["user_id"], current_user["role"])
+            logger.warning("Access denied for id_client: %s with role: %s", current_user["id_client"], current_user["role"])
             data = {
                 "message": "ERROR - You don't have permissions"
             }

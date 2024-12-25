@@ -137,7 +137,7 @@ async def on_create_message(message):
 
         order = json.loads(message.body.decode())
         db = SessionLocal()
-        address_check = await crud.check_address(db, order["user_id"])
+        address_check = await crud.check_address(db, order["id_client"])
         data = {
             "id_order": order["id_order"],
             "status": address_check
@@ -147,7 +147,7 @@ async def on_create_message(message):
         else:
             status_delivery_address_check = "cancelled"
 
-        delivery = await crud.create_delivery(db, order["id_order"], order["user_id"], status_delivery_address_check)
+        delivery = await crud.create_delivery(db, order["id_order"], order["id_client"], status_delivery_address_check)
         message, routing_key = await rabbitmq_publish_logs.formato_log_message("info",
                                                                                "delivery creado correctamente para el order " + str(
                                                                                    delivery.order_id))

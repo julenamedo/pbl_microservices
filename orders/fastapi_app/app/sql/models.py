@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """Database models definitions. Table representations as class."""
-from sqlalchemy import Column, DateTime, Integer, String, TEXT, ForeignKey
+from sqlalchemy import Column, DateTime, Integer, String, TEXT, Float, ForeignKey
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from .database import Base
@@ -36,19 +36,26 @@ class BaseModel(Base):
 
 class Order(BaseModel):
     """order database table representation."""
-    STATUS_CREATED = "Created"
-    STATUS_CANCELED = "Canceled"
-    STATUS_FINISHED = "Finished"
-    STATUS_DELIVERED = "Delivered"
+    STATUS_DELIVERY_PENDING = "DeliveryPending"
     STATUS_PAYMENT_PENDING = "PaymentPending"
-    STATUS_PAYMENT_DONE = "PaymentDone"
-    STATUS_PAYMENT_CANCELED = "PaymentCanceled"
+    STATUS_DELIVERY_CANCELING = "DeliveryCanceling"
+    STATUS_CANCELED = "Canceled"
+    STATUS_QUEUED = "Queued"
+    STATUS_PRODUCED = "Produced"
+    STATUS_DELIVERING = "Delivering"
+    STATUS_DELIVERED = "Delivered"
+    STATUS_ORDER_CANCEL_DELIVERY_PENDING = "OrderCancelDeliveryPending"
+    STATUS_ORDER_CANCEL_PAYMENT_PENDING = "OrderCancelPaymentPending"
+    STATUS_ORDER_CANCEL_WAREHOUSE_PENDING = "OrderCancelWarehousePending"
+    STATUS_ORDER_CANCEL_PAYMENT_RECHARGING = "OrderCancelPaymentRecharging"
+    STATUS_ORDER_CANCEL_DELIVERY_REDELIVERING = "OrderCancelDeliveryRedelivering"
 
     __tablename__ = "manufacturing_order"
     id = Column(Integer, primary_key=True)
-    number_of_pieces = Column(Integer, nullable=False)
+    number_of_pieces_a = Column(Integer, nullable=False)
+    number_of_pieces_b = Column(Integer, nullable=False)
     description = Column(TEXT, nullable=False, default="No description")
-    status = Column(String(256), nullable=False, default=STATUS_CREATED)
+    status = Column(String(256), nullable=False)
     id_client = Column(Integer, nullable=False)
     pieces = relationship("Piece", back_populates="order", lazy="joined")
 
@@ -59,41 +66,12 @@ class Order(BaseModel):
         return dictionary
 
 
-class Piece(BaseModel):
-    """Piece database table representation."""
-    STATUS_CREATED = "Created"
-    STATUS_CANCELLED = "Cancelled"
-    STATUS_QUEUED = "Queued"
-    STATUS_MANUFACTURING = "Manufacturing"
-    STATUS_MANUFACTURED = "Manufactured"
-
-    __tablename__ = "piece"
-    id = Column(Integer, primary_key=True, autoincrement=True)
-    manufacturing_date = Column(DateTime(timezone=True), server_default=None)
-    status = Column(String(256), default=STATUS_QUEUED)
-    order_id = Column(
-        Integer,
-        ForeignKey('manufacturing_order.id', ondelete='cascade'),
-        nullable=True)
-
-    order = relationship('Order', back_populates='pieces', lazy="joined")
-
-class User(Base):
-    """User database table representation."""
-    __tablename__ = "users"  # Cambié el nombre a 'users' para que coincida con tu tabla
-
-    id = Column(Integer, primary_key=True, index=True)
-    username = Column(String(256), nullable=False, unique=True)
-    password = Column(String(256), nullable=False)
-    creation_date = Column(DateTime(timezone=True), server_default=func.now())
-
-    def as_dict(self):
-        """Return the user item as dict."""
-        return {
-            "id": self.id,
-            "username": self.username,
-            "creation_date": self.creation_date
-        }
+class Catalog(BaseModel):
+    """Catalog database table representation."""
+    __tablename__ = "catalog"
+    piece_type = Column(String(256), primary_key=True)
+    description = Column(String(256), nullable=False)
+    price = Column(Float, nullable=False)
 
 
 class SagasHistory(BaseModel):
@@ -103,23 +81,3 @@ class SagasHistory(BaseModel):
     id_order = Column(Integer, nullable=False)
     status = Column(String(256), nullable=False)
 
-
-class Delivery(Base):
-
-    STATUS_CREATED = "CREATED"
-    STATUS_IN_PROCESS = "IN_PROCESS"
-    STATUS_COMPLETED = "COMPLETED"
-    STATUS_DELIVERED = "DELIVERED"
-
-
-    __tablename__ = "deliveries"
-
-    id = Column(Integer, primary_key=True, autoincrement=True)
-    order_id = Column(Integer, nullable=False)  # ID del pedido
-    user_id = Column(Integer, nullable=False)    # ID del usuario
-    delivery_info = Column(String(50), nullable=True)  # Dirección de entrega
-    status = Column(String(50), default="CREATED")     # Estado de la entrega
-    creation_date = Column(DateTime, default=DateTime(timezone=True))
-
-    def __repr__(self):
-        return f"<Delivery(id={self.id}, order_id={self.order_id}, user_id={self.user_id}, status={self.status})>"

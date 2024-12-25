@@ -33,18 +33,9 @@ Monolithic manufacturing order application.
 tag_metadata = [
 
     {
-        "name": "Machine",
-        "description": "Endpoints related to machines",
-    },
-    {
         "name": "Order",
-        "description": "Endpoints to **CREATE**, **READ**, **UPDATE** or **DELETE** orders.",
+        "description": "Endpoints to **CREATE**, **READ**, **UPDATE** or **DELETE (CANCEL)** orders.",
     },
-    {
-        "name": "Piece",
-        "description": "Endpoints **READ** piece information.",
-    },
-
 ]
 
 app = FastAPI(
@@ -67,37 +58,53 @@ app.include_router(main_router.router)
 
 @app.on_event("startup")
 async def startup_event():
-    """Configuration to be executed when FastAPI server starts."""
-    logger.info("Creating database tables")
-    async with database.engine.begin() as conn:
-        await conn.run_sync(models.Base.metadata.create_all)
-    await rabbitmq.subscribe_channel()
-    await rabbitmq_publish_logs.subscribe_channel()
-    logger.info("Se ha suscrito")
 
-    register_consul_service()
-
-    asyncio.create_task(rabbitmq.subscribe_pieces())
-    asyncio.create_task(rabbitmq.subscribe_delivering())
-    asyncio.create_task(rabbitmq.subscribe_command_payment_checked())
-    asyncio.create_task(rabbitmq.subscribe_payment_checked())
-    asyncio.create_task(rabbitmq.subscribe_delivery_cancel())
-    asyncio.create_task(rabbitmq.subscribe_order_finished())
     try:
-        task = asyncio.create_task(update_system_resources_periodically(15))
+        """Configuration to be executed when FastAPI server starts."""
+        logger.info("Creating database tables")
+        async with database.engine.begin() as conn:
+            await conn.run_sync(models.Base.metadata.create_all)
+        await rabbitmq.subscribe_channel()
+        await rabbitmq_publish_logs.subscribe_channel()
+        logger.info("Se ha suscrito")
+
+        register_consul_service()
+
+        asyncio.create_task(rabbitmq.subscribe_delivery_checked_order_cancel())
+        asyncio.create_task(rabbitmq.subscribe_order_finished())
+        asyncio.create_task(rabbitmq.subscribe_delivering())
+        asyncio.create_task(rabbitmq.subscribe_produced())
+        asyncio.create_task(rabbitmq.subscribe_delivery_cancel())
+        asyncio.create_task(rabbitmq.subscribe_command_payment_checked())
+        asyncio.create_task(rabbitmq.subscribe_delivery_checked())
+        asyncio.create_task(update_system_resources_periodically(15))
+
+        data = {
+            "message": "INFO - Servicio Orders inicializado correctamente"
+        }
+        message_body = json.dumps(data)
+        routing_key = "orders.startup.info"
+        await rabbitmq_publish_logs.publish_log(message_body, routing_key)
     except Exception as e:
         logger.error(f"Error al monitorear recursos del sistema: {e}")
+        data = {
+            "message": "ERROR - Error al inicializar el servicio Order"
+        }
+        message_body = json.dumps(data)
+        routing_key = "orders.startup.error"
+        await rabbitmq_publish_logs.publish_log(message_body, routing_key)
 
-    data = {
-        "message": "INFO - Servicio Orders inicializado correctamente"
-    }
-    message_body = json.dumps(data)
-    routing_key = "logs.info.orders"
-    await rabbitmq_publish_logs.publish_log(message_body, routing_key)
+
     logger.info("Se ha enviado")
 
 @app.on_event("shutdown")
 async def shutdown_event():
+    data = {
+        "message": "INFO - Servicio Order desregistrado de Consul"
+    }
+    message_body = json.dumps(data)
+    routing_key = "orders.shutdown.info"
+    await rabbitmq_publish_logs.publish_log(message_body, routing_key)
     unregister_consul_service()
 
 if __name__ == "__main__":
@@ -109,7 +116,7 @@ if __name__ == "__main__":
     uvicorn.run(
         app,
         host="0.0.0.0",
-        port=8004,
+        port=8008,
         log_config='logging.ini'
     )
 

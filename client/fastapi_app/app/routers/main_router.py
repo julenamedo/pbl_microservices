@@ -227,18 +227,18 @@ async def login(user: schemas.UserCreate, db: AsyncSession = Depends(get_db)):
     db_user = await crud.get_user_by_username(db, user.username)
 
     if not db_user or not crud.verify_password(user.password, db_user.password):
-        logger.error("Invalid credentials, missing user_id or username.")
+        logger.error("Invalid credentials, missing id_client or username.")
         raise fastapi.HTTPException(status_code=400, detail="Invalid credentials")
 
 
     # Crear el access token (con expiración corta)
     access_token = create_access_token(
-        data={"username": db_user.username, "user_id": db_user.id, "role": db_user.rol}
+        data={"username": db_user.username, "id_client": db_user.id, "role": db_user.rol}
     )
 
     # Crear el refresh token (con expiración larga)
     refresh_token = create_access_token(
-        data={"username": db_user.username, "user_id": db_user.id, "role": db_user.rol}
+        data={"username": db_user.username, "id_client": db_user.id, "role": db_user.rol}
     )
 
     # Retornar ambos tokens
@@ -254,13 +254,13 @@ async def refresh_token(token: str, db: AsyncSession = Depends(get_db)):
         logger.debug(f"Received token for refresh: {token}")
         # Decodificar el refresh token
         payload = jwt.decode(token, PUBLIC_KEY, algorithms=[ALGORITHM])
-        user_id = payload.get("user_id")
+        id_client = payload.get("id_client")
         username = payload.get("username")
 
-        if user_id is None or username is None:
-            logger.error("Invalid refresh token, missing user_id or username.")
+        if id_client is None or username is None:
+            logger.error("Invalid refresh token, missing id_client or username.")
             data = {
-                "message": "ERROR - Invalid refresh token, missing user_id or username"
+                "message": "ERROR - Invalid refresh token, missing id_client or username"
             }
             message_body = json.dumps(data)
             routing_key = "client.refresh.error"
@@ -268,9 +268,9 @@ async def refresh_token(token: str, db: AsyncSession = Depends(get_db)):
             raise HTTPException(status_code=401, detail="Invalid refresh token")
 
         # Verificar si el usuario aún existe en la base de datos
-        db_user = await crud.get_user_by_id(db, user_id)
+        db_user = await crud.get_user_by_id(db, id_client)
         if not db_user:
-            logger.error(f"User with ID {user_id} not found.")
+            logger.error(f"User with ID {id_client} not found.")
             data = {
                 "message": "ERROR - User not found."
             }
@@ -287,7 +287,7 @@ async def refresh_token(token: str, db: AsyncSession = Depends(get_db)):
         routing_key = "client.refresh.info"
         await rabbitmq_publish_logs.publish_log(message_body, routing_key)
         access_token = create_access_token(
-            data={"username": username, "user_id": user_id}
+            data={"username": username, "id_client": id_client}
         )
 
         logger.debug("New access token generated successfully.")
@@ -311,13 +311,13 @@ async def refresh_token(token: str, db: AsyncSession = Depends(get_db)):
 async def change_password(
     current_password: str,
     new_password: str,
-    user_id: int = None,  # Parámetro opcional
+    id_client: int = None,  # Parámetro opcional
     db: AsyncSession = Depends(get_db),
     user: dict = Depends(get_current_user)
 ):
-    # Si `user_id` se proporciona, verificar que sea admin o coincida con el ID del usuario autenticado
-    if user_id:
-        if user.get("role") != "admin" and user.get("user_id") != user_id:
+    # Si `id_client` se proporciona, verificar que sea admin o coincida con el ID del usuario autenticado
+    if id_client:
+        if user.get("role") != "admin" and user.get("id_client") != id_client:
             data = {
                 "message": "ERROR - Not authorized"
             }
@@ -326,11 +326,11 @@ async def change_password(
             await rabbitmq_publish_logs.publish_log(message_body, routing_key)
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized")
     else:
-        # Si no se proporciona `user_id`, usar el ID del usuario autenticado
-        user_id = user.get("user_id")
+        # Si no se proporciona `id_client`, usar el ID del usuario autenticado
+        id_client = user.get("id_client")
 
     # Obtener el usuario objetivo
-    db_user = await crud.get_user_by_id(db, user_id)
+    db_user = await crud.get_user_by_id(db, id_client)
     if not db_user:
         data = {
             "message": "ERROR - User not found"
@@ -363,9 +363,9 @@ async def change_password(
     return db_user
 
 
-@router.delete("/delete/{user_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete("/delete/{id_client}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_user(
-    user_id: int,
+    id_client: int,
     db: AsyncSession = Depends(get_db),
     user: dict = Depends(get_current_user)
 ):
@@ -380,7 +380,7 @@ async def delete_user(
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized")
 
     # Obtener el usuario objetivo
-    db_user = await crud.get_user_by_id(db, user_id)
+    db_user = await crud.get_user_by_id(db, id_client)
     if not db_user:
         data = {
             "message": "ERROR - User not found"

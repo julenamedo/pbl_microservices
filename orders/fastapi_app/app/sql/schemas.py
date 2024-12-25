@@ -13,8 +13,13 @@ class Message(BaseModel):
 
 class OrderBase(BaseModel):
     """Order base schema definition."""
-    number_of_pieces: int = Field(
-        description="Number of pieces to manufacture for the new order",
+    number_of_pieces_a: int = Field(
+        description="Number of pieces of A type to manufacture for the new order",
+        default=None,
+        example=10
+    )
+    number_of_pieces_b: int = Field(
+        description="Number of pieces of B type to manufacture for the new order",
         default=None,
         example=10
     )
@@ -28,12 +33,16 @@ class OrderBase(BaseModel):
         default=1,
         example=1
     )
-    #  pieces = relationship("Piece", lazy="joined")
+
 
 class OrderUpdate(BaseModel):
     """Esquema para actualizar una orden con campos opcionales."""
-    number_of_pieces: Optional[int] = Field(
-        description="Number of pieces to manufacture for the order",
+    number_of_pieces_a: Optional[int] = Field(
+        description="Number of pieces of A type to manufacture for the order",
+        example=10
+    )
+    number_of_pieces_b: Optional[int] = Field(
+        description="Number of pieces of B type to manufacture for the order",
         example=10
     )
     description: Optional[str] = Field(
@@ -48,6 +57,8 @@ class OrderUpdate(BaseModel):
         description="Current status of the order",
         example="InProgress"
     )
+
+
 class Order(OrderBase):
     """Order schema definition."""
     model_config = ConfigDict(from_attributes=True)  # ORM mode ON
@@ -67,45 +78,12 @@ class OrderPost(OrderBase):
     """Schema definition to create a new order."""
 
 
-class PieceBase(BaseModel):
-    """Piece base schema definition."""
-    id: int = Field(
-        description="Piece identifier (Primary key)",
-        example="1"
-    )
-    manufacturing_date: Optional[datetime] = Field(
-        description="Date when piece has been manufactured",
-        example="2022-07-22T17:32:32.193211"
-    )
-    status: str = Field(
-        description="Current status of the piece",
-        default="Queued",
-        example="Manufactured"
-    )
+class CatalogBase(BaseModel):
+    """Catalog base schema definition."""
+    id: int = Field()
+    piece_type: str = Field()
+    price: str = Field()
 
-
-class Piece(PieceBase):
-    """Piece schema definition."""
-    model_config = ConfigDict(from_attributes=True)  # ORM mode ON
-    order: Optional[Order] = Field(description="Order where the piece belongs to")
-
-    #class Config:
-    #    """ORM configuration."""
-    #    orm_mode = True
-
-
-class MachineStatusResponse(BaseModel):
-    """machine status schema definition."""
-    status: str = Field(
-        description="Machine's current status",
-        default=None,
-        example="Waiting"
-    )
-    working_piece: Optional[int] = Field(
-        description="Current working piece id. None if not working piece.",
-        example=1
-    )
-    queue: List[int] = Field(description="Queued piece ids")
 
 class SagasHistoryBase(BaseModel):
     """Sagas history base schema definition."""

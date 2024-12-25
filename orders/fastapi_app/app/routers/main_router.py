@@ -11,7 +11,7 @@ from jose import JWTError, jwt
 from pydantic.json_schema import models_json_schema
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.dependencies import get_db, get_machine
-from app.sql import crud
+from app.sql import crud, models, schemas
 from ..sql import schemas
 from app.routers import rabbitmq_publish_logs, rabbitmq
 from .router_utils import raise_and_log_error
@@ -205,20 +205,26 @@ async def create_order(
 ):
     """Create single order endpoint."""
     logger.debug("POST '/order' endpoint called.")
-    order_schema.id_client=current_user["user_id"]
-    db_order = await crud.create_order_from_schema(db, order_schema)
-    data = {
-        "id_order": db_order.id,
-        "id_client": db_order.id_client,
-        "movement": -(db_order.number_of_pieces)
-    }
-    message_body = json.dumps(data)
-    routing_key = "events.order.created.pending"
-    await rabbitmq.publish(message_body, routing_key)
-    await rabbitmq_publish_logs.publish_log("order " + str(db_order.id) + " needs the balance to be checked", "logs.info.order")
+    try:
+        order_schema.id_client = current_user["id_client"]
+        db_order = await crud.create_order_from_schema(db, order_schema)
+        data = {
+            "message": "INFO - Order created"
+        }
+        message_body = json.dumps(data)
+        routing_key = "orders.create_order.info"
+        await rabbitmq_publish_logs.publish_log(message_body, routing_key)
 
-    # Retornar la respuesta final
-    return {"detail": "Order created successfully", "order_id": db_order.id}
+        # Retornar la respuesta final
+        return {"detail": "Order created successfully", "order_id": db_order.id}
+    except Exception as exc:
+        data = {
+            "message": "ERROR - Error creating order"
+        }
+        message_body = json.dumps(data)
+        routing_key = "orders.create_order.error"
+        await rabbitmq_publish_logs.publish_log(message_body, routing_key)
+        raise_and_log_error(logger, status.HTTP_409_CONFLICT, f"Error creating order: {exc}")
 
 @router.get(
     "/order/{order_id}",
@@ -246,63 +252,58 @@ async def get_single_order(
         "message": "INFO - Order obtained by id"
     }
     message_body = json.dumps(data)
-    routing_key = "logs.info.order"
+    routing_key = "orders.get_single_order.info"
     await rabbitmq_publish_logs.publish_log(message_body, routing_key)
     if not order:
         raise_and_log_error(logger, status.HTTP_404_NOT_FOUND, f"Order {order_id} not found")
+        data = {
+            "message": "ERROR - Order not found"
+        }
+        message_body = json.dumps(data)
+        routing_key = "orders.get_single_order.error"
+        await rabbitmq_publish_logs.publish_log(message_body, routing_key)
     return order
 
 
-@router.delete(
-    "/order/{order_id}",
-    summary="Delete order",
-    responses={
-        status.HTTP_200_OK: {
-            "model": schemas.Order,
-            "description": "Order successfully deleted."
-        },
-        status.HTTP_404_NOT_FOUND: {
-            "model": schemas.Message, "description": "Order not found"
-        }
-    },
+@router.post(
+    "/order/cancel/{id_order}",
+    response_model=schemas.Order,
+    summary="Cancel single order",
+    status_code=status.HTTP_200_OK,
     tags=["Order"]
 )
-async def remove_order_by_id(
+async def cancel_order(
         order_id: int,
-        db: AsyncSession = Depends(get_db),
-current_user: Dict = Depends(get_current_user)
-        #my_machine: Machine = Depends(get_machine)
+        db: AsyncSession = Depends(get_db)
 ):
-    """Remove order"""
-
-    if current_user["role"] != "admin":
-        logger.warning("Access denied for user_id: %s with role: %s", current_user["user_id"], current_user["role"])
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Access forbidden: only admins can delete orders."
-        )
-
-    logger.debug("DELETE '/order/%i' endpoint called.", order_id)
-    order = await crud.get_order(db, order_id)
-    data = {
-        "message": "INFO - Order deleted"
-    }
-    message_body = json.dumps(data)
-    routing_key = "logs.info.order"
-    await rabbitmq_publish_logs.publish_log(message_body, routing_key)
-    logger.debug(order)
-    if not order:
-        raise_and_log_error(logger, status.HTTP_404_NOT_FOUND, f"Order {order_id} not found")
-    #await my_machine.remove_pieces_from_queue(order.pieces)
+    """Cancel single order endpoint."""
+    logger.debug("POST '/order/cancel/%i' endpoint called.", order_id)
     try:
-        response= requests.delete(f"http://localhost:8001/machine_order/{order_id}")
-        if response.status_code != status.HTTP_200_OK:
-            raise Exception
-        return await crud.delete_order(db, order_id)
-
-    except Exception as exc:  #catchear el error si no se puede eliminar o acceder a la api de machine
-        print("Ha habido un error creando la pieza")
-        raise_and_log_error(logger, status.HTTP_409_CONFLICT, f"Error creating order: {exc}")
+        order = await crud.get_order(db, order_id)
+        if (order.status == models.Order.STATUS_DELIVERY_PENDING) or (
+                order.status == models.Order.STATUS_PAYMENT_PENDING) or (
+                order.status == models.Order.STATUS_DELIVERY_CANCELING):
+            raise_and_log_error(logger, status.HTTP_409_CONFLICT,
+                                f"Order can't be canceled as it is being processed yet, please try again later.")
+        elif (order.status == models.Order.STATUS_QUEUED):
+            db_order = await crud.cancel_order(db, order_id)
+            data = {
+                "message": "INFO - Order cancelation started"
+            }
+            message_body = json.dumps(data)
+            routing_key = "orders.cancel_order.info"
+            await rabbitmq_publish_logs.publish_log(message_body, routing_key)
+            return db_order
+        else:
+            raise_and_log_error(logger, status.HTTP_409_CONFLICT, f"Unknown error at order cancelation.")
+    except Exception as exc:
+        data = {
+            "message": "ERROR - Error canceling the order"
+        }
+        message_body = json.dumps(data)
+        routing_key = "orders.cancel_order.error"
+        await rabbitmq_publish_logs.publish_log(message_body, routing_key)
+        raise_and_log_error(logger, status.HTTP_409_CONFLICT, f"Error canceling order: {exc}")
 
 
 @router.put(
@@ -333,7 +334,13 @@ async def update_order(
 
     # Verificar si el usuario tiene el rol de administrador
     if current_user["role"] != "admin":
-        logger.warning("Access denied for user_id: %s with role: %s", current_user["user_id"], current_user["role"])
+        logger.warning("Access denied for id_client: %s with role: %s", current_user["id_client"], current_user["role"])
+        data = {
+            "message": "ERROR - You don't have permissions"
+        }
+        message_body = json.dumps(data)
+        routing_key = "orders.update_order.error"
+        await rabbitmq_publish_logs.publish_log(message_body, routing_key)
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Access forbidden: only admins can update orders."
@@ -345,9 +352,22 @@ async def update_order(
     # Intentar actualizar la orden usando el método del CRUD
     updated_order = await crud.update_order(db, order_id, update_data)
     if not updated_order:
+        data = {
+            "message": "ERROR - Order to be updated not found"
+        }
+        message_body = json.dumps(data)
+        routing_key = "orders.update_order.error"
+        await rabbitmq_publish_logs.publish_log(message_body, routing_key)
         raise_and_log_error(logger, status.HTTP_404_NOT_FOUND, f"Order {order_id} not found")
 
+    data = {
+        "message": "INFO - Order updated"
+    }
+    message_body = json.dumps(data)
+    routing_key = "orders.update_order.info"
+    await rabbitmq_publish_logs.publish_log(message_body, routing_key)
     return updated_order
+
 
 @router.get(
     "/order/sagashistory/{order_id}",
@@ -373,16 +393,53 @@ async def get_sagas_history(
     logs = await crud.get_sagas_history(db, order_id)
     if not logs:
         data = {
-            "message": "ERROR - Logs not found"
+            "message": "ERROR - Saga history not found"
         }
         message_body = json.dumps(data)
-        routing_key = "logs.error.order"
+        routing_key = "orders.get_sagas_history.error"
         await rabbitmq_publish_logs.publish_log(message_body, routing_key)
         raise_and_log_error(logger, status.HTTP_404_NOT_FOUND)
     data = {
-        "message": "INFO - Log obtained"
+        "message": "INFO - Saga history obtained"
     }
     message_body = json.dumps(data)
-    routing_key = "logs.info.order"
+    routing_key = "orders.get_sagas_history.info"
     await rabbitmq_publish_logs.publish_log(message_body, routing_key)
     return logs
+
+
+@router.get(
+    "/order/catalog",
+    summary="Retrieve catalog",
+    responses={
+        status.HTTP_200_OK: {
+            "model": schemas.CatalogBase,
+            "description": "Requested catalog."
+        },
+        status.HTTP_404_NOT_FOUND: {
+            "model": schemas.Message, "description": "Catalog not found"
+        }
+    },
+    tags=['Order']
+)
+async def get_catalog(
+        db: AsyncSession = Depends(get_db)
+):
+    """Retrieve catalog"""
+    logger.debug("GET '/order/catalog' endpoint called.")
+    db_catalog = await crud.get_catalog(db)
+    if not db_catalog:
+        data = {
+            "message": "ERROR - Catalog not found"
+        }
+        message_body = json.dumps(data)
+        routing_key = "order.get_catalog.error"
+        await rabbitmq_publish_logs.publish_log(message_body, routing_key)
+        raise_and_log_error(logger, status.HTTP_404_NOT_FOUND)
+    data = {
+        "message": "INFO - Catalog obtained"
+    }
+    message_body = json.dumps(data)
+    routing_key = "order.get_catalog.info"
+    await rabbitmq_publish_logs.publish_log(message_body, routing_key)
+    return db_catalog

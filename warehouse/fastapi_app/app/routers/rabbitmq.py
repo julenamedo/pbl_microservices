@@ -115,7 +115,7 @@ async def on_piece_order(message):
                 "id_client": pieces_ordered['id_client']
             }
             message_body = json.dumps(data)
-            routing_key = "order.produced"
+            routing_key = "orders.produced"
             await publish(message_body, routing_key)
         await db.close()
 
@@ -151,7 +151,7 @@ async def on_piece_message(message):
                     "id_client": db_piece.id_client
                 }
                 message_body = json.dumps(data)
-                routing_key = "order.produced"
+                routing_key = "orders.produced"
                 await publish(message_body, routing_key)
         await db.close()
 
@@ -195,10 +195,10 @@ async def on_delivering(message):
 
 
 async def subscribe_delivering():
-    queue_name = "order.delivering"
+    queue_name = "orders.delivering"
     queue = await channel.declare_queue(name=queue_name, exclusive=True)
     # Bind the queue to the exchange
-    routing_key = "order.delivering"
+    routing_key = "orders.delivering"
 
     await queue.bind(exchange=exchange_responses_name, routing_key=routing_key)
     # Set up a message consumer

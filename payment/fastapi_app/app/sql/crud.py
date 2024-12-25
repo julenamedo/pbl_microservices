@@ -145,14 +145,14 @@ async def delete_element_by_id(db: AsyncSession, model, element_id):
     return element
 
 
-async def get_balance_by_user_id(db: AsyncSession, user_id: int) -> models.Payment:
-    """Retrieve or create a payment entry for a user by user_id."""
-    result = await db.execute(select(models.Payment).where(models.Payment.user_id == user_id))
+async def get_balance_by_id_client(db: AsyncSession, id_client: int) -> models.Payment:
+    """Retrieve or create a payment entry for a user by id_client."""
+    result = await db.execute(select(models.Payment).where(models.Payment.id_client == id_client))
     payment = result.scalars().first()
 
     # If payment record does not exist, create it with balance 0
     if not payment:
-        payment = models.Payment(user_id=user_id, balance=0.0)
+        payment = models.Payment(id_client=id_client, balance=0.0)
         db.add(payment)
         await db.commit()
         await db.refresh(payment)
@@ -160,12 +160,12 @@ async def get_balance_by_user_id(db: AsyncSession, user_id: int) -> models.Payme
     return payment
 
 
-async def update_balance_by_user_id(db: AsyncSession, user_id: int, amount: float) -> tuple[float, bool]:
-    """Update (add or subtract) balance for a user by user_id. Creates entry if non-existent.
+async def update_balance_by_id_client(db: AsyncSession, id_client: int, amount: float) -> tuple[float, bool]:
+    """Update (add or subtract) balance for a user by id_client. Creates entry if non-existent.
 
     Returns the balance and a boolean indicating success.
     """
-    payment = await get_balance_by_user_id(db, user_id)  # Get existing or create new payment entry
+    payment = await get_balance_by_id_client(db, id_client)  # Get existing or create new payment entry
 
     # Calculate the new balance
     new_balance = payment.balance + amount

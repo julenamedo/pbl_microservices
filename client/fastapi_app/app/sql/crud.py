@@ -149,8 +149,8 @@ async def get_client_by_username_and_pass(db: AsyncSession, username, password):
     return await get_element_by_username_and_pass(db, models.Client, username, password)
 
 
-async def get_user_by_id(db: AsyncSession, user_id: int) -> Optional[models.User]:
+async def get_user_by_id(db: AsyncSession, id_client: int) -> Optional[models.User]:
     """Get a user by their ID."""
-    result = await db.execute(select(models.User).filter(models.User.id == user_id))
+    result = await db.execute(select(models.User).filter(models.User.id == id_client))
     return result.scalars().first()
 

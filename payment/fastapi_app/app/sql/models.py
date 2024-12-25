@@ -36,53 +36,13 @@ class BaseModel(Base):
         return {c.name: getattr(self, c.name) for c in self.__table__.columns}
 
 
-class Order(BaseModel):
-    """order database table representation."""
-    STATUS_CREATED = "Created"
-    STATUS_FINISHED = "Finished"
-
-    __tablename__ = "manufacturing_order"
-    id = Column(Integer, primary_key=True)
-    number_of_pieces = Column(Integer, nullable=False)
-    description = Column(TEXT, nullable=False, default="No description")
-    status = Column(String(256), nullable=False, default=STATUS_CREATED)
-
-    pieces = relationship("Piece", back_populates="order", lazy="joined")
-
-    def as_dict(self):
-        """Return the order item as dict."""
-        dictionary = super().as_dict()
-        dictionary['pieces'] = [i.as_dict() for i in self.pieces]
-        return dictionary
-
-
-class Piece(BaseModel):
-    """Piece database table representation."""
-    STATUS_CREATED = "Created"
-    STATUS_CANCELLED = "Cancelled"
-    STATUS_QUEUED = "Queued"
-    STATUS_MANUFACTURING = "Manufacturing"
-    STATUS_MANUFACTURED = "Manufactured"
-
-    __tablename__ = "piece"
-    id = Column(Integer, primary_key=True)
-    manufacturing_date = Column(DateTime(timezone=True), server_default=None)
-    status = Column(String(256), default=STATUS_QUEUED)
-    order_id = Column(
-        Integer,
-        ForeignKey('manufacturing_order.id', ondelete='cascade'),
-        nullable=True)
-
-    order = relationship('Order', back_populates='pieces', lazy="joined")
-
-
 class Payment(Base):
     __tablename__ = "payment"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    user_id = Column(Integer, unique=True, nullable=False)  # Ensures unique user_id for each payment entry
+    id_client = Column(Integer, unique=True, nullable=False)  # Ensures unique id_client for each payment entry
     balance = Column(Float, default=0.0)  # Default balance set to 0.0
     creation_date = Column(DateTime, default=datetime.utcnow)  # Auto-filled timestamp
 
     def __repr__(self):
-        return f"<Payment(id={self.id}, user_id={self.user_id}, balance={self.balance})>"
+        return f"<Payment(id={self.id}, id_client={self.id_client}, balance={self.balance})>"

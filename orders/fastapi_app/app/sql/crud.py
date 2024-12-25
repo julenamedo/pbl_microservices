@@ -32,12 +32,37 @@ async def create_order_from_schema(db: AsyncSession, order):
     await db_saga.close()
     data = {
         "id_order": db_order.id,
-        "user_id": db_order.id_client
+        "id_client": db_order.id_client
     }
     message_body = json.dumps(data)
     routing_key = "delivery.check"
     await publish_command(message_body, routing_key)
     return db_order
+
+
+async def create_catalog_from_schema(db: AsyncSession):
+    """Insert pieces catalog into the database."""
+    db_catalog = await get_list(db, models.Catalog)
+    for db_catalog_piece in db_catalog:
+        await db.delete(db_catalog_piece)
+    await db.commit()
+    db_catalog_piece = models.Catalog(
+        piece_type="A",
+        description="Piece A",
+        price=1.0
+    )
+    db.add(db_catalog_piece)
+    await db.commit()
+    await db.refresh(db_catalog_piece)
+    db_catalog_piece = models.Catalog(
+        piece_type="B",
+        description="Piece B",
+        price=2.0
+    )
+    db.add(db_catalog_piece)
+    await db.commit()
+    await db.refresh(db_catalog_piece)
+    return db_catalog_piece
 
 
 async def add_piece_to_order(db: AsyncSession, order):
@@ -63,9 +88,30 @@ async def get_order(db: AsyncSession, order_id):
     return order
 
 
+async def get_orders_by_client(db: AsyncSession, client_id):
+    """Load all the orders from the database."""
+    stmt = select(models.Order).where(models.Order.id_client == client_id)
+    orders = await get_list_statement_result(db, stmt)
+    return orders
+
 async def delete_order(db: AsyncSession, order_id):
     """Delete order from the database."""
     return await delete_element_by_id(db, models.Order, order_id)
+
+
+async def cancel_order(db: AsyncSession, id_order):
+    db_saga = SessionLocal()
+    db_order = await get_order(db, id_order)
+    db_order = await update_order_status(db, id_order, models.Order.STATUS_ORDER_CANCEL_DELIVERY_PENDING)
+    await create_sagas_history(db_saga, db_order.id_order, db_order.status)
+    await db_saga.close()
+    data = {
+        "id_order": db_order.id
+    }
+    message_body = json.dumps(data)
+    routing_key = "delivery.check_cancel"
+    await publish_command(message_body, routing_key)
+    return db_order
 
 
 async def update_order_status(db: AsyncSession, order_id, status):
@@ -130,6 +176,16 @@ async def get_piece_list_by_order(db: AsyncSession, order_id: int):
 async def get_piece(db: AsyncSession, piece_id):
     """Load a piece from the database."""
     return await get_element_by_id(db, models.Piece, piece_id)
+
+
+async def get_piece_from_catalog_by_piece_type(db: AsyncSession, piece_type):
+    """Load a piece from the catalog of the database."""
+    return await get_element_by_id(db, models.Catalog, piece_type)
+
+
+async def get_catalog(db: AsyncSession):
+    db_catalog = await get_list(db, models.Catalog)
+    return db_catalog
 
 
 # Generic functions ################################################################################

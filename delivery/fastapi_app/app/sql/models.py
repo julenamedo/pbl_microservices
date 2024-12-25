@@ -90,7 +90,7 @@ class Delivery(Base):
 
     __tablename__ = "deliveries"
 
-    user_id = Column(Integer, nullable=False)
+    id_client = Column(Integer, nullable=False)
     order_id = Column(Integer, primary_key=True, autoincrement=True)
     status = Column(
         Text,
@@ -101,9 +101,9 @@ class Delivery(Base):
 class UserAddress(Base):
     __tablename__ = "user_address"
 
-    user_id = Column(Integer, primary_key=True)  # ID único del usuario
+    id_client = Column(Integer, primary_key=True)  # ID único del usuario
     address = Column(String(255), nullable=False)  # Dirección de entrega
     zip_code = Column(Integer, nullable=False)  # Código postal
 
     def __repr__(self):
-        return f"<UserAddress(user_id={self.user_id}, address={self.address}, zip_code={self.zip_code})>"
+        return f"<UserAddress(id_client={self.id_client}, address={self.address}, zip_code={self.zip_code})>"

@@ -16,13 +16,12 @@ ssl_context.verify_mode = ssl.CERT_NONE  # No verifica el certificado del servid
 
 # Variables globales
 channel = None
-exchange_logs_name = 'exchange'
+exchange_logs_name = 'log'
 exchange_logs = None
 
+
 async def subscribe_channel():
-    """
-    Conéctate a RabbitMQ utilizando SSL, declara los intercambios necesarios y configura el canal.
-    """
+
     global channel, exchange_logs, exchange_logs_name
 
     try:
@@ -54,7 +53,7 @@ async def subscribe_channel():
 
     except Exception as e:
         logger.error(f"Error al suscribirse: {e}")
-        raise  # Re-lanzar el error para manejo superior si es necesari
+        raise
 
 
 async def publish_log(message_body, routing_key):

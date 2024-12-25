@@ -20,7 +20,7 @@ channel = None
 exchange_commands = None
 exchange_events = None
 exchange_commands_name = 'commands'
-exchange_events_name = 'exchange'
+exchange_events_name = 'events'
 exchange_responses_name = 'responses'
 exchange_responses = None
 
@@ -42,7 +42,6 @@ async def subscribe_channel():
         channel = await connection.channel()
         logger.debug("Canal creado con éxito")
 
-
         exchange_events = await channel.declare_exchange(name=exchange_events_name, type='topic', durable=True)
 
         exchange_commands = await channel.declare_exchange(name=exchange_commands_name, type='topic', durable=True)
@@ -59,7 +58,7 @@ async def on_message_payment_check(message):
     async with message.process():
         order = json.loads(message.body.decode())
         db = SessionLocal()
-        balance, status = await crud.update_balance_by_user_id(db, order['id_client'], order['movement'])
+        balance, status = await crud.update_balance_by_id_client(db, order['id_client'], order['movement'])
         await db.close()
         data = {
             "id_order": order['id_order'],
@@ -67,22 +66,8 @@ async def on_message_payment_check(message):
         }
         message_body = json.dumps(data)
         logger.debug("el mensage que se envia es: " + message_body)
-        routing_key = "events.order.checked"
-        await publish_event(message_body, routing_key)
         routing_key = "payment.checked"
         await publish_response(message_body, routing_key)
-
-async def subscribe_payment_check():
-    # Create queue
-    queue_name = "events.order.created.pending"
-    queue = await channel.declare_queue(name=queue_name, exclusive=True)
-    # Bind the queue to the exchange
-    routing_key = "events.order.created.pending"
-    await queue.bind(exchange=exchange_events_name, routing_key=routing_key)
-    # Set up a message consumer
-    async with queue.iterator() as queue_iter:
-        async for message in queue_iter:
-            await on_message_payment_check(message)
 
 
 async def subscribe_command_payment_check():
@@ -98,9 +83,22 @@ async def subscribe_command_payment_check():
             await on_message_payment_check(message)
 
 
+
+# Faltaria ver si necesita la de cancel
+
 async def publish_event(message_body, routing_key):
     # Publish the message to the exchange
     await exchange_events.publish(
+        aio_pika.Message(
+            body=message_body.encode(),
+            content_type="text/plain"
+        ),
+        routing_key=routing_key)
+
+
+async def publish_command(message_body, routing_key):
+    # Publish the message to the exchange
+    await exchange_commands.publish(
         aio_pika.Message(
             body=message_body.encode(),
             content_type="text/plain"

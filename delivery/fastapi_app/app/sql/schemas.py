@@ -106,7 +106,7 @@ class UserAddressBase(BaseModel):
 
 class UserAddressCreate(UserAddressBase):
     """Schema for creating a UserAddress."""
-    user_id: Optional[int] = Field(
+    id_client: Optional[int] = Field(
         None,
         description="ID of the user",
         example=1
@@ -115,7 +115,7 @@ class UserAddressCreate(UserAddressBase):
 
 class UserAddress(UserAddressBase):
     """Schema for representing UserAddress."""
-    user_id: int
+    id_client: int
 
     class Config:
         orm_mode = True
@@ -132,7 +132,7 @@ class DeliveryBase(BaseModel):
 
 class DeliveryCreate(BaseModel):
     """Schema for creating a Delivery."""
-    user_id: Optional[int] = Field(
+    id_client: Optional[int] = Field(
         None,
         description="ID of the user creating the delivery",
         example=1
@@ -155,7 +155,7 @@ class DeliveryUpdate(BaseModel):
 class Delivery(DeliveryBase):
     """Schema for representing Delivery."""
     order_id: int
-    user_id: int
+    id_client: int
 
     class Config:
         orm_mode = True

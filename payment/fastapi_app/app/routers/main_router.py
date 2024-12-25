@@ -190,55 +190,96 @@ async def health_check():
 # Route to get the balance for the current user
 @router.get("/balance", response_model=schemas.BalanceResponse, summary="Get balance")
 async def get_balance(
-        user_id: int = None,  # Parámetro opcional
+        id_client: int = None,  # Parámetro opcional
         current_user: dict = Depends(get_current_user),
         db: AsyncSession = Depends(get_db)
 ):
     """Retrieve balance for the authenticated user or a specific user if admin."""
-    # Si se proporciona `user_id`, verificar permisos
-    if user_id:
+    # Si se proporciona `id_client`, verificar permisos
+    if id_client:
         if current_user.get("role") != "admin":
+            data = {
+                "message": "ERROR - You don't have permissions"
+            }
+            message_body = json.dumps(data)
+            routing_key = "payment.get_balance.error"
+            await rabbitmq_publish_logs.publish_log(message_body, routing_key)
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied. Admins only.")
     else:
         # Si no se proporciona, usar el ID del usuario autenticado
-        user_id = current_user["user_id"]
+        id_client = current_user["id_client"]
 
     # Obtener el balance del usuario
-    payment = await crud.get_balance_by_user_id(db, user_id)
+    payment = await crud.get_balance_by_id_client(db, id_client)
     if not payment:
+        data = {
+            "message": "ERROR - user balance not found"
+        }
+        message_body = json.dumps(data)
+        routing_key = "payment.get_balance.error"
+        await rabbitmq_publish_logs.publish_log(message_body, routing_key)
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User balance not found")
-
-    return schemas.BalanceResponse(user_id=payment.user_id, balance=payment.balance)
+    data = {
+        "message": "INFO - user balance retrieved"
+    }
+    message_body = json.dumps(data)
+    routing_key = "payment.get_balance.info"
+    await rabbitmq_publish_logs.publish_log(message_body, routing_key)
+    return schemas.BalanceResponse(id_client=payment.id_client, balance=payment.balance)
 
 
 # Ruta para actualizar el balance
 @router.put("/balance", response_model=schemas.BalanceResponse, summary="Update balance")
 async def update_balance(
         update_data: schemas.BalanceUpdate,
-        user_id: int = None,  # Parámetro opcional
+        id_client: int = None,  # Parámetro opcional
         current_user: dict = Depends(get_current_user),
         db: AsyncSession = Depends(get_db)
 ):
     """Update balance for the authenticated user or a specific user if admin."""
-    # Si se proporciona `user_id`, verificar permisos
-    if user_id:
+    # Si se proporciona `id_client`, verificar permisos
+    if id_client:
         if current_user.get("role") != "admin":
+            data = {
+                "message": "ERROR - You don't have permissions"
+            }
+            message_body = json.dumps(data)
+            routing_key = "payment.update_balance.error"
+            await rabbitmq_publish_logs.publish_log(message_body, routing_key)
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied. Admins only.")
     else:
         # Si no se proporciona, usar el ID del usuario autenticado
-        user_id = current_user["user_id"]
+        id_client = current_user["id_client"]
 
     # Verificar que el monto sea positivo
     if update_data.amount < 0:
+        data = {
+            "message": "ERROR - Charging the user is not allowed. Amount must be positive."
+        }
+        message_body = json.dumps(data)
+        routing_key = "payment.update_balance.error"
+        await rabbitmq_publish_logs.publish_log(message_body, routing_key)
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Charging the user is not allowed. Amount must be positive."
         )
 
     # Actualizar el balance
-    new_balance, success = await crud.update_balance_by_user_id(db, user_id, update_data.amount)
+    new_balance, success = await crud.update_balance_by_id_client(db, id_client, update_data.amount)
 
     if not success:
+        data = {
+            "message": "ERROR - Insufficient funds"
+        }
+        message_body = json.dumps(data)
+        routing_key = "payment.update_balance.error"
+        await rabbitmq_publish_logs.publish_log(message_body, routing_key)
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Insufficient funds")
 
-    return schemas.BalanceResponse(user_id=user_id, balance=new_balance)
+    data = {
+        "message": "INFO - user balance updated"
+    }
+    message_body = json.dumps(data)
+    routing_key = "payment.update_balance.info"
+    await rabbitmq_publish_logs.publish_log(message_body, routing_key)
+    return schemas.BalanceResponse(id_client=id_client, balance=new_balance)

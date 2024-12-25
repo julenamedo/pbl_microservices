@@ -215,16 +215,16 @@ async def create_address(
 ):
     """
     Create a new address.
-    - If user_id is not provided, use current_user["user_id"].
+    - If id_client is not provided, use current_user["id_client"].
     """
-    user_id = address_data.user_id or current_user["user_id"]
+    id_client = address_data.id_client or current_user["id_client"]
     role = current_user["role"]
 
-    # Si el usuario no es admin, verificar que no intente crear para otro user_id
-    if role != "admin" and user_id != current_user["user_id"]:
+    # Si el usuario no es admin, verificar que no intente crear para otro id_client
+    if role != "admin" and id_client != current_user["id_client"]:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
 
-    return await crud.create_address(db, user_id, address_data.address, address_data.zip_code)
+    return await crud.create_address(db, id_client, address_data.address, address_data.zip_code)
 
 
 @router.post(
@@ -248,18 +248,18 @@ async def create_delivery(
 ):
     """
     Create a new delivery.
-    - If user_id is not provided, use current_user["user_id"].
+    - If id_client is not provided, use current_user["id_client"].
     """
     try:
-        user_id = delivery_data.user_id or current_user["user_id"]
+        id_client = delivery_data.id_client or current_user["id_client"]
         role = current_user["role"]
 
-        # Si el usuario no es admin, verificar que no intente crear para otro user_id
+        # Si el usuario no es admin, verificar que no intente crear para otro id_client
         if role != "admin":
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
 
-        logger.debug(f"Attempting to create delivery: user_id={user_id}, order_id={delivery_data.order_id}")
-        result = await crud.create_delivery(db, user_id, delivery_data.order_id)
+        logger.debug(f"Attempting to create delivery: id_client={id_client}, order_id={delivery_data.order_id}")
+        result = await crud.create_delivery(db, id_client, delivery_data.order_id)
         logger.debug(f"Delivery successfully created: {result}")
         return result
 
@@ -279,22 +279,22 @@ async def create_delivery(
     tags=["Address"]
 )
 async def get_address(
-    user_id: Optional[int] = None,
+    id_client: Optional[int] = None,
     current_user: dict = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
     """
     Get address.
-    - If user_id is not provided, use current_user["user_id"].
+    - If id_client is not provided, use current_user["id_client"].
     """
-    user_id = user_id or current_user["user_id"]
+    id_client = id_client or current_user["id_client"]
     role = current_user["role"]
 
-    # Si el usuario no es admin, verificar que no intente acceder a otro user_id
-    if role != "admin" and user_id != current_user["user_id"]:
+    # Si el usuario no es admin, verificar que no intente acceder a otro id_client
+    if role != "admin" and id_client != current_user["id_client"]:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
 
-    address = await crud.get_address_by_user_id(db, user_id)
+    address = await crud.get_address_by_id_client(db, id_client)
     if not address:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Address not found")
 
@@ -325,7 +325,7 @@ async def get_delivery(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Delivery not found")
 
     # Si el usuario no es admin, verificar que sea el propietario
-    if role != "admin" and delivery.user_id != current_user["user_id"]:
+    if role != "admin" and delivery.id_client != current_user["id_client"]:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
 
     return delivery
@@ -340,22 +340,22 @@ async def get_delivery(
 )
 async def update_address(
     address_data: schemas.UserAddressCreate,
-    user_id: Optional[int] = None,
+    id_client: Optional[int] = None,
     current_user: dict = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
     """
     Update address.
-    - If user_id is not provided, use current_user["user_id"].
+    - If id_client is not provided, use current_user["id_client"].
     """
-    user_id = user_id or current_user["user_id"]
+    id_client = id_client or current_user["id_client"]
     role = current_user["role"]
 
-    # Si el usuario no es admin, verificar que no intente actualizar otro user_id
-    if role != "admin" and user_id != current_user["user_id"]:
+    # Si el usuario no es admin, verificar que no intente actualizar otro id_client
+    if role != "admin" and id_client != current_user["id_client"]:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
 
-    updated_address = await crud.update_address(db, user_id, address_data.address, address_data.zip_code)
+    updated_address = await crud.update_address(db, id_client, address_data.address, address_data.zip_code)
     if not updated_address:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Address not found")
 
@@ -377,7 +377,7 @@ async def update_delivery(
 ):
     """
     Update delivery.
-    - If user_id is not provided, use current_user["user_id"].
+    - If id_client is not provided, use current_user["id_client"].
     """
     role = current_user["role"]
     delivery = await crud.get_delivery_by_order_id(db, order_id)
@@ -400,22 +400,22 @@ async def update_delivery(
     tags=["Address"]
 )
 async def delete_address(
-    user_id: Optional[int] = None,
+    id_client: Optional[int] = None,
     current_user: dict = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
     """
     Delete address.
-    - If user_id is not provided, use current_user["user_id"].
+    - If id_client is not provided, use current_user["id_client"].
     """
-    user_id = user_id or current_user["user_id"]
+    id_client = id_client or current_user["id_client"]
     role = current_user["role"]
 
-    # Si el usuario no es admin, verificar que no intente eliminar otro user_id
-    if role != "admin" and user_id != current_user["user_id"]:
+    # Si el usuario no es admin, verificar que no intente eliminar otro id_client
+    if role != "admin" and id_client != current_user["id_client"]:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
 
-    deleted = await crud.delete_address(db, user_id)
+    deleted = await crud.delete_address(db, id_client)
     if not deleted:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Address not found")
 

@@ -19,7 +19,7 @@ ssl_context.verify_mode = ssl.CERT_NONE  # No verifica el certificado del servid
 # Variables globales
 channel = None
 exchange = None
-exchange_name = 'event'
+exchange_name = 'events'
 
 async def subscribe_channel():
     """

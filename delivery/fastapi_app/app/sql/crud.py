@@ -24,11 +24,11 @@ logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
 
-async def create_address(db: AsyncSession, user_id: int, address: str, zip_code: int):
+async def create_address(db: AsyncSession, id_client: int, address: str, zip_code: int):
     """Create a new address for a user, ensuring there is no existing address."""
     # Check if an address already exists for the user
     existing_address = await db.execute(
-        select(models.UserAddress).where(models.UserAddress.user_id == user_id)
+        select(models.UserAddress).where(models.UserAddress.id_client == id_client)
     )
     existing_address = existing_address.scalars().first()
 
@@ -38,15 +38,15 @@ async def create_address(db: AsyncSession, user_id: int, address: str, zip_code:
         existing_address.zip_code = zip_code
         await db.commit()
         await db.refresh(existing_address)
-        logger.debug("Address updated for user_id %s with address: %s", user_id, address)
+        logger.debug("Address updated for id_client %s with address: %s", id_client, address)
         return existing_address
 
     # Create the new address
-    new_address = models.UserAddress(user_id=user_id, address=address, zip_code=zip_code)
+    new_address = models.UserAddress(id_client=id_client, address=address, zip_code=zip_code)
     db.add(new_address)
     await db.commit()
     await db.refresh(new_address)
-    logger.debug("Address created for user_id %s with address: %s", user_id, address)
+    logger.debug("Address created for id_client %s with address: %s", id_client, address)
     return new_address
 
 
@@ -57,7 +57,7 @@ async def get_list_statement_result(db: AsyncSession, stmt):
     return item_list
 
 
-async def create_delivery(db: AsyncSession, order_id: int, user_id: int, delivery_status: str):
+async def create_delivery(db: AsyncSession, order_id: int, id_client: int, delivery_status: str):
     """Create a new delivery for a user, ensuring there is no existing delivery for the same order_id."""
     try:
         # Check if a delivery already exists for the order_id
@@ -69,18 +69,18 @@ async def create_delivery(db: AsyncSession, order_id: int, user_id: int, deliver
         if existing_delivery:
             # Optionally update the status or other fields of the existing delivery
             existing_delivery.status = existing_delivery.status  # Reset status if needed
-            existing_delivery.user_id = user_id  # Update the user ID if applicable
+            existing_delivery.id_client = id_client  # Update the user ID if applicable
             await db.commit()
             await db.refresh(existing_delivery)
-            logger.debug("Delivery updated for order_id %s with user_id: %s", order_id, user_id)
+            logger.debug("Delivery updated for order_id %s with id_client: %s", order_id, id_client)
             return existing_delivery
 
         # Create a new delivery if no existing one is found
-        new_delivery = models.Delivery(order_id=order_id, user_id=user_id, status=delivery_status)
+        new_delivery = models.Delivery(order_id=order_id, id_client=id_client, status=delivery_status)
         db.add(new_delivery)
         await db.commit()
         await db.refresh(new_delivery)
-        logger.debug("Delivery created with order_id %s, user_id: %s, and status: %s", order_id, user_id,
+        logger.debug("Delivery created with order_id %s, id_client: %s, and status: %s", order_id, id_client,
                      delivery_status)
         return new_delivery
 
@@ -97,12 +97,12 @@ async def create_delivery(db: AsyncSession, order_id: int, user_id: int, deliver
         raise HTTPException(status_code=500, detail="Unexpected error occurred")
 
 
-async def update_address(db: AsyncSession, user_id: int, address: Optional[str], zip_code: Optional[int]):
+async def update_address(db: AsyncSession, id_client: int, address: Optional[str], zip_code: Optional[int]):
     """Actualizar la dirección para un usuario."""
     async with db.begin():
         stmt = (
             update(models.UserAddress)
-            .where(models.UserAddress.user_id == user_id)
+            .where(models.UserAddress.id_client == id_client)
             .values(
                 address=address if address else models.UserAddress.address,
                 zip_code=zip_code if zip_code else models.UserAddress.zip_code
@@ -113,17 +113,17 @@ async def update_address(db: AsyncSession, user_id: int, address: Optional[str],
         await db.commit()
 
     if result.rowcount == 0:
-        logger.debug("No address found for user_id %s. Update skipped.", user_id)
+        logger.debug("No address found for id_client %s. Update skipped.", id_client)
         return None
 
-    logger.debug("Address updated for user_id %s", user_id)
-    return await get_address_by_user_id(db, user_id)
+    logger.debug("Address updated for id_client %s", id_client)
+    return await get_address_by_id_client(db, id_client)
 
 
-async def check_address(db: AsyncSession, user_id):
+async def check_address(db: AsyncSession, id_client):
     """Persist a new client into the database."""
 
-    address = await get_address_by_user_id(db, user_id)
+    address = await get_address_by_id_client(db, id_client)
 
     provincia = address.zip_code // 1000  # Extraer código de provincia del código postal
     if (provincia == 1 or provincia == 20 or provincia == 48):
@@ -182,18 +182,18 @@ async def update_delivery(db: AsyncSession, order_id: int, status: Optional[str]
     return await get_delivery_by_order(db, order_id)
 
 
-async def delete_address(db: AsyncSession, user_id: int):
-    """Eliminar una dirección por user_id."""
+async def delete_address(db: AsyncSession, id_client: int):
+    """Eliminar una dirección por id_client."""
     async with db.begin():
-        stmt = delete(models.UserAddress).where(models.UserAddress.user_id == user_id)
+        stmt = delete(models.UserAddress).where(models.UserAddress.id_client == id_client)
         result = await db.execute(stmt)
         await db.commit()
 
     if result.rowcount == 0:
-        logger.debug("No address found for user_id %s. Delete skipped.", user_id)
+        logger.debug("No address found for id_client %s. Delete skipped.", id_client)
         return False
 
-    logger.debug("Address for user_id %s deleted successfully", user_id)
+    logger.debug("Address for id_client %s deleted successfully", id_client)
     return True
 
 
@@ -212,9 +212,9 @@ async def delete_delivery(db: AsyncSession, order_id: int):
     return True
 
 
-async def get_address_by_user_id(db: AsyncSession, user_id: int):
-    """Obtener una dirección por user_id."""
-    result = await db.execute(select(models.UserAddress).where(models.UserAddress.user_id == user_id))
+async def get_address_by_id_client(db: AsyncSession, id_client: int):
+    """Obtener una dirección por id_client."""
+    result = await db.execute(select(models.UserAddress).where(models.UserAddress.id_client == id_client))
     return result.scalars().first()
 
 
