@@ -8,8 +8,7 @@ from fastapi import APIRouter, Depends, status, HTTPException
 from fastapi.security import HTTPBearer, OAuth2PasswordBearer, HTTPAuthorizationCredentials
 from jose import JWTError, jwt
 from sqlalchemy.ext.asyncio import AsyncSession
-from app.business_logic.async_machine import Machine
-from app.dependencies import get_db, get_machine
+from app import dependencies
 from app.sql import crud
 from app.sql import schemas
 from app.routers import rabbitmq, rabbitmq_publish_logs
@@ -34,7 +33,7 @@ ALGORITHM = "RS256"
 
 router = APIRouter()
 
-def verify_access_token(token: str):
+async def verify_access_token(token: str):
     """Verifica la validez del token JWT"""
     if not token:
         data = {
@@ -73,7 +72,7 @@ def verify_access_token(token: str):
         )
 
 
-def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security)):
+async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security)):
     try:
         # Verificar si no hay credenciales en la cabecera
         if credentials is None or not credentials.credentials:
@@ -192,7 +191,7 @@ async def health_check():
 async def get_balance(
         id_client: int = None,  # Parámetro opcional
         current_user: dict = Depends(get_current_user),
-        db: AsyncSession = Depends(get_db)
+        db: AsyncSession = Depends(dependencies.get_db)
 ):
     """Retrieve balance for the authenticated user or a specific user if admin."""
     # Si se proporciona `id_client`, verificar permisos
@@ -234,7 +233,7 @@ async def update_balance(
         update_data: schemas.BalanceUpdate,
         id_client: int = None,  # Parámetro opcional
         current_user: dict = Depends(get_current_user),
-        db: AsyncSession = Depends(get_db)
+        db: AsyncSession = Depends(dependencies.get_db)
 ):
     """Update balance for the authenticated user or a specific user if admin."""
     # Si se proporciona `id_client`, verificar permisos

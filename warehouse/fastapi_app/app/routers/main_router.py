@@ -10,7 +10,7 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer, OAuth2Pas
 from jose import JWTError, jwt
 from pydantic.json_schema import models_json_schema
 from sqlalchemy.ext.asyncio import AsyncSession
-from app.dependencies import get_db, get_machine
+from app import dependencies
 from app.sql import crud
 from ..sql import schemas
 from app.routers import rabbitmq_publish_logs, rabbitmq
@@ -35,7 +35,7 @@ router = APIRouter()
 
 ALGORITHM = "RS256"
 
-def verify_access_token(token: str):
+async def verify_access_token(token: str):
     """Verifica la validez del token JWT"""
     if not token:
         data = {
@@ -74,7 +74,7 @@ def verify_access_token(token: str):
         )
 
 
-def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security)):
+async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security)):
     try:
         # Verificar si no hay credenciales en la cabecera
         if credentials is None or not credentials.credentials:
@@ -208,7 +208,7 @@ async def health_check():
 async def get_warehouse(
     id_order: int = Query(None, description="Order ID"),
     piece_type: str = Query(None, description="Piece type"),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(dependencies.get_db),
     current_user: Dict = Depends(get_current_user),
 
 ):

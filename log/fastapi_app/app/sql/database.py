@@ -33,3 +33,5 @@ influxdb_client = InfluxDBClient(
 
 # Correctly initialize Write API with batching or default options
 write_api = influxdb_client.write_api(write_options=WriteOptions(batch_size=500, flush_interval=10_000))
+
+Base = declarative_base()

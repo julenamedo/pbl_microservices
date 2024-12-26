@@ -10,7 +10,7 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer, OAuth2Pas
 from jose import JWTError, jwt
 from pydantic.json_schema import models_json_schema
 from sqlalchemy.ext.asyncio import AsyncSession
-from app.dependencies import get_db, get_machine
+from app import dependencies
 from app.sql import crud, models, schemas
 from ..sql import schemas
 from app.routers import rabbitmq_publish_logs, rabbitmq
@@ -35,7 +35,7 @@ router = APIRouter()
 
 ALGORITHM = "RS256"
 
-def verify_access_token(token: str):
+async def verify_access_token(token: str):
     """Verifica la validez del token JWT"""
     if not token:
         data = {
@@ -74,7 +74,7 @@ def verify_access_token(token: str):
         )
 
 
-def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security)):
+async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security)):
     try:
         # Verificar si no hay credenciales en la cabecera
         if credentials is None or not credentials.credentials:
@@ -200,7 +200,7 @@ async def health_check():
 async def create_order(
     order_schema: schemas.OrderPost,
     current_user: dict = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(dependencies.get_db),
 
 ):
     """Create single order endpoint."""
@@ -242,7 +242,7 @@ async def create_order(
 )
 async def get_single_order(
         order_id: int,
-        db: AsyncSession = Depends(get_db),
+        db: AsyncSession = Depends(dependencies.get_db),
         current_user: Dict = Depends(get_current_user)
 ):
     """Retrieve single order by id"""
@@ -274,7 +274,7 @@ async def get_single_order(
 )
 async def cancel_order(
         order_id: int,
-        db: AsyncSession = Depends(get_db)
+        db: AsyncSession = Depends(dependencies.get_db)
 ):
     """Cancel single order endpoint."""
     logger.debug("POST '/order/cancel/%i' endpoint called.", order_id)
@@ -327,7 +327,7 @@ async def cancel_order(
 async def update_order(
     order_id: int,
     order_update: schemas.OrderUpdate,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(dependencies.get_db),
     current_user: dict = Depends(get_current_user)
 ):
     """Update order endpoint for admins only."""
@@ -385,8 +385,7 @@ async def update_order(
 )
 async def get_sagas_history(
         order_id: int,
-        db: AsyncSession = Depends(get_db),
-        current_user: Dict = Depends(get_current_user)
+        db: AsyncSession = Depends(dependencies.get_db)
 ):
     """Retrieve sagas history"""
     logger.debug("GET '/order/sagashistory/%i' endpoint called.", order_id)
@@ -423,7 +422,7 @@ async def get_sagas_history(
     tags=['Order']
 )
 async def get_catalog(
-        db: AsyncSession = Depends(get_db)
+        db: AsyncSession = Depends(dependencies.get_db)
 ):
     """Retrieve catalog"""
     logger.debug("GET '/order/catalog' endpoint called.")

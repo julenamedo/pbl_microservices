@@ -65,8 +65,6 @@ async def startup_event():
         logger.info("Database tables created successfully")
         await rabbitmq.subscribe_channel()
         asyncio.create_task(rabbitmq.subscribe_command_payment_check())
-        logger.info("RabbitMQ channels subscribed successfully")
-        asyncio.create_task(rabbitmq.subscribe_payment_check())
         asyncio.create_task(update_system_resources_periodically(15))
 
         data = {

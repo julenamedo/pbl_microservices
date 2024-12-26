@@ -11,7 +11,6 @@ from fastapi import APIRouter, Depends, status, HTTPException
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer, OAuth2PasswordBearer
 from jose import JWTError, jwt
 from pydantic.json_schema import models_json_schema
-from app.dependencies import get_db
 from app.sql import crud
 from app.routers import rabbitmq, rabbitmq_publish_logs
 from .router_utils import raise_and_log_error
@@ -43,7 +42,7 @@ router = APIRouter()
 
 ALGORITHM = "RS256"
 
-def verify_access_token(token: str):
+async def verify_access_token(token: str):
     """Verifica la validez del token JWT"""
     if not token:
         data = {
@@ -82,7 +81,7 @@ def verify_access_token(token: str):
         )
 
 
-def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security)):
+async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security)):
     try:
         # Verificar si no hay credenciales en la cabecera
         if credentials is None or not credentials.credentials:

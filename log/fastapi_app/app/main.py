@@ -62,10 +62,20 @@ async def startup_event():
     """Configuration to be executed when FastAPI server starts."""
     try:
         logger.info("Creating database tables")
-        async with database.engine.begin() as conn:
-            await conn.run_sync(models.Base.metadata.create_all)
-        await rabbitmq.subscribe_channel()
+        # async with database.engine.begin() as conn:
+        #     await conn.run_sync(models.Base.metadata.create_all)
+        # await rabbitmq.subscribe_channel()
         # Suscripción a canales y tareas de RabbitMQ
+
+        # Initialize InfluxDB
+        logger.info("Connecting to InfluxDB...")
+        try:
+            influx_health = database.influxdb_client.health()
+            logger.info(f"InfluxDB Health: {influx_health}")
+        except Exception as e:
+            logger.error(f"Failed to connect to InfluxDB: {e}")
+            raise
+
         await rabbitmq.subscribe_channel()
         register_consul_service()
 

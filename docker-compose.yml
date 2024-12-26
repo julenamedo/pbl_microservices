@@ -219,7 +219,7 @@ services:
       CONSUL_HOST: consul
     restart: on-failure
 
-  logging:
+  log:
     build: ./log/fastapi_app/.
     ports:
       - '8009:8000'
@@ -282,7 +282,7 @@ services:
       - delivery
       - client
       - payment
-      - logging
+      - log
       - rabbitmq
     env_file:
       - .env

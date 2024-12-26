@@ -5,8 +5,6 @@ import requests
 from typing import List
 from fastapi import APIRouter, Depends, status, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
-from app.business_logic.async_machine import Machine
-from app.dependencies import get_db, get_machine
 from app.sql import crud
 from app.sql import schemas
 from .router_utils import raise_and_log_error
@@ -78,7 +76,7 @@ async def health_check():
     tags=['Machine_A1']
 )
 async def machine_status(
-        my_machine: Machine = Depends(get_machine)
+        # my_machine: Machine = Depends(get_machine)
 ):
     """Retrieve machine status"""
     logger.debug("GET '/machine_a1/status' endpoint called.")

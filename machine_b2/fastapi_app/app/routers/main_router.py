@@ -5,10 +5,8 @@ import requests
 from typing import List
 from fastapi import APIRouter, Depends, status, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
-from app.business_logic.async_machine import Machine
-from app.dependencies import get_db, get_machine
 from app.sql import crud
-from app.sql import schemas, models
+from app.sql import schemas
 from .router_utils import raise_and_log_error
 from global_variables.global_variables import rabbitmq_working, system_values
 from global_variables.global_variables import get_rabbitmq_status
@@ -81,7 +79,7 @@ async def health_check():
     tags=['Machine_B2']
 )
 async def machine_status(
-        my_machine: Machine = Depends(get_machine)
+        # my_machine: Machine = Depends(get_machine)
 ):
     """Retrieve machine status"""
     logger.debug("GET '/machine_b2/status' endpoint called.")

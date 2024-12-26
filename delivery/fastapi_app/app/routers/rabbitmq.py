@@ -4,9 +4,6 @@ import json
 from app.sql.database import SessionLocal  # pylint: disable=import-outside-toplevel
 from app.sql import crud, models
 from app import dependencies
-from app.consul_router import get_consul_service
-import requests
-from app.routers import rabbitmq_publish_logs
 import ssl
 import logging
 from global_variables.global_variables import update_system_resources_periodically, set_rabbitmq_status, get_rabbitmq_status

@@ -7,8 +7,6 @@ import fastapi
 from fastapi import APIRouter, Depends, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer, OAuth2PasswordBearer
 from sqlalchemy.ext.asyncio import AsyncSession
-from app.business_logic.async_machine import Machine
-from app.dependencies import get_db, get_machine
 from app.sql import crud
 from app.routers import rabbitmq, rabbitmq_publish_logs
 from .auth import PUBLIC_KEY, ALGORITHM
@@ -18,7 +16,7 @@ from fastapi import Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.routers.auth import create_access_token
 from app.sql import crud, schemas, models
-from app.dependencies import get_db
+from app import dependencies
 from jose import JWTError, jwt
 from passlib.context import CryptContext
 from global_variables.global_variables import rabbitmq_working, system_values
@@ -86,7 +84,7 @@ with open("/keys/pub.pem", "r") as pub_file:
 ALGORITHM = "RS256"
 
 
-def verify_access_token(token: str):
+async def verify_access_token(token: str):
     """Verifica la validez del token JWT"""
     if not token:
         data = {
@@ -125,7 +123,7 @@ def verify_access_token(token: str):
         )
 
 
-def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security)):
+async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security)):
     try:
         # Verificar si no hay credenciales en la cabecera
         if credentials is None or not credentials.credentials:
@@ -188,7 +186,7 @@ def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(securit
 
 
 @router.post("/register", response_model=schemas.UserData)
-async def register(user: schemas.UserCreate, db: AsyncSession = Depends(get_db)):
+async def register(user: schemas.UserCreate, db: AsyncSession = Depends(dependencies.get_db)):
     try:
         # Verifica si el usuario ya existe
         existing_user = await crud.get_user_by_username(db, user.username)
@@ -223,7 +221,7 @@ async def register(user: schemas.UserCreate, db: AsyncSession = Depends(get_db))
 
 
 @router.post("/login")
-async def login(user: schemas.UserCreate, db: AsyncSession = Depends(get_db)):
+async def login(user: schemas.UserCreate, db: AsyncSession = Depends(dependencies.get_db)):
     db_user = await crud.get_user_by_username(db, user.username)
 
     if not db_user or not crud.verify_password(user.password, db_user.password):
@@ -249,7 +247,7 @@ async def login(user: schemas.UserCreate, db: AsyncSession = Depends(get_db)):
     }
 
 @router.post("/refresh")
-async def refresh_token(token: str, db: AsyncSession = Depends(get_db)):
+async def refresh_token(token: str, db: AsyncSession = Depends(dependencies.get_db)):
     try:
         logger.debug(f"Received token for refresh: {token}")
         # Decodificar el refresh token
@@ -312,7 +310,7 @@ async def change_password(
     current_password: str,
     new_password: str,
     id_client: int = None,  # Parámetro opcional
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(dependencies.get_db),
     user: dict = Depends(get_current_user)
 ):
     # Si `id_client` se proporciona, verificar que sea admin o coincida con el ID del usuario autenticado
@@ -366,7 +364,7 @@ async def change_password(
 @router.delete("/delete/{id_client}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_user(
     id_client: int,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(dependencies.get_db),
     user: dict = Depends(get_current_user)
 ):
     # Verificar que el usuario autenticado sea administrador

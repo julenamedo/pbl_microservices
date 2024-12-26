@@ -2,7 +2,6 @@ import aio_pika
 import logging
 import json
 
-from app.sql import crud, models
 import ssl
 from global_variables.global_variables import update_system_resources_periodically, set_rabbitmq_status, get_rabbitmq_status
 from datetime import datetime

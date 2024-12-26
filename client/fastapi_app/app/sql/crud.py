@@ -6,9 +6,9 @@ from typing import Optional
 import json
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
-from . import models
+from app.sql import models
 from passlib.context import CryptContext
-from routers import rabbitmq
+from app.routers import rabbitmq
 from . import schemas
 
 logger = logging.getLogger(__name__)

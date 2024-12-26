@@ -2,8 +2,6 @@ import aio_pika
 import json
 import ssl
 import logging
-from app.sql.database import SessionLocal # pylint: disable=import-outside-toplevel
-
 
 # Configuración del logger
 logging.basicConfig(level=logging.INFO)

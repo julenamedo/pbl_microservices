@@ -5,8 +5,6 @@ from app.sql.database import SessionLocal  # pylint: disable=import-outside-topl
 from app.sql import crud
 from app.sql import models, schemas
 import logging
-from app.routers import rabbitmq_publish_logs
-from app import dependencies
 import ssl
 from global_variables.global_variables import update_system_resources_periodically, set_rabbitmq_status, get_rabbitmq_status
 

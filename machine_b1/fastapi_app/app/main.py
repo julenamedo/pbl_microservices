@@ -12,9 +12,6 @@ from app.routers import main_router
 from app.routers import rabbitmq
 from app.routers import rabbitmq_publish_logs
 import asyncio
-from app.sql import models
-from app.sql import database
-import global_variables
 from global_variables.global_variables import update_system_resources_periodically, set_rabbitmq_status, get_rabbitmq_status
 
 # Configure logging ################################################################################

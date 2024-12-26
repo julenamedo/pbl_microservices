@@ -5,7 +5,7 @@ import aio_pika
 from typing import List, Optional
 from fastapi import APIRouter, Depends, status, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
-from app.dependencies import get_db, get_machine
+from app import dependencies
 from app.sql import crud
 from app.sql import schemas
 import json
@@ -35,7 +35,7 @@ delivery_info = [
 security = HTTPBearer(auto_error=False,)
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 ALGORITHM = "RS256"
-def verify_access_token(token: str):
+async def verify_access_token(token: str):
     """Verifica la validez del token JWT"""
     if not token:
         data = {
@@ -74,7 +74,7 @@ def verify_access_token(token: str):
         )
 
 
-def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security)):
+async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security)):
     try:
         # Verificar si no hay credenciales en la cabecera
         if credentials is None or not credentials.credentials:
@@ -211,7 +211,7 @@ async def health_check():
 async def create_address(
     address_data: schemas.UserAddressCreate,
     current_user: dict = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(dependencies.get_db),
 ):
     id_client = address_data.id_client or current_user["id_client"]
     role = current_user["role"]
@@ -245,7 +245,7 @@ async def create_address(
 async def create_delivery(
     delivery_data: schemas.DeliveryCreate,
     current_user: dict = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(dependencies.get_db),
 ):
 
     try:
@@ -297,7 +297,7 @@ async def create_delivery(
 async def get_address(
     id_client: Optional[int] = None,
     current_user: dict = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(dependencies.get_db),
 ):
 
     id_client = id_client or current_user["id_client"]
@@ -342,7 +342,7 @@ async def get_address(
 async def get_delivery(
     order_id: int,
     current_user: dict = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(dependencies.get_db),
 ):
 
     role = current_user["role"]
@@ -387,7 +387,7 @@ async def update_address(
     address_data: schemas.UserAddressCreate,
     id_client: Optional[int] = None,
     current_user: dict = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(dependencies.get_db),
 ):
 
     id_client = id_client or current_user["id_client"]
@@ -433,7 +433,7 @@ async def update_delivery(
     order_id: int,
     delivery_data: schemas.DeliveryUpdate,
     current_user: dict = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(dependencies.get_db),
 ):
 
     role = current_user["role"]
@@ -476,7 +476,7 @@ async def update_delivery(
 async def delete_address(
     id_client: Optional[int] = None,
     current_user: dict = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(dependencies.get_db),
 ):
     id_client = id_client or current_user["id_client"]
     role = current_user["role"]
@@ -517,7 +517,7 @@ async def delete_address(
 async def delete_delivery(
     order_id: int,
     current_user: dict = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(dependencies.get_db),
 ):
     role = current_user["role"]
     delivery = await crud.get_delivery_by_order_id(db, order_id)
