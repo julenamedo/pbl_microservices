@@ -433,13 +433,13 @@ async def get_catalog(
             "message": "ERROR - Catalog not found"
         }
         message_body = json.dumps(data)
-        routing_key = "order.get_catalog.error"
+        routing_key = "orders.get_catalog.error"
         await rabbitmq_publish_logs.publish_log(message_body, routing_key)
         raise_and_log_error(logger, status.HTTP_404_NOT_FOUND)
     data = {
         "message": "INFO - Catalog obtained"
     }
     message_body = json.dumps(data)
-    routing_key = "order.get_catalog.info"
+    routing_key = "orders.get_catalog.info"
     await rabbitmq_publish_logs.publish_log(message_body, routing_key)
     return db_catalog

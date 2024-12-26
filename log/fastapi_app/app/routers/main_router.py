@@ -1,6 +1,7 @@
 import logging
 import aio_pika
 import asyncio
+import json
 from fastapi import APIRouter, HTTPException,status
 from typing import List
 from global_variables.global_variables import rabbitmq_working, system_values
@@ -12,6 +13,7 @@ from jose import JWTError, jwt
 from pydantic.json_schema import models_json_schema
 from app.dependencies import get_db
 from app.sql import crud
+from app.routers import rabbitmq, rabbitmq_publish_logs
 from .router_utils import raise_and_log_error
 from typing import Dict
 from global_variables.global_variables import rabbitmq_working, system_values

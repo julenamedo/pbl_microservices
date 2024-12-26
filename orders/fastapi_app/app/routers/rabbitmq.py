@@ -208,7 +208,7 @@ async def on_payment_checked_message(message):
                     routing_key = "warehouse.requested"
                     await publish(message_body, routing_key)
 
-                    # Crear las piezas de la orden (lo voy a poner en el main_router)
+                    # Crear las piezas de la orden (lo voy a poner en el rabbitmq de warehouse)
                     # for _ in range(db_order.number_of_pieces):
                     #     db_piece = await crud.add_piece_to_order(db, db_order)
                     #     data = {

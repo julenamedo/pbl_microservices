@@ -199,7 +199,7 @@ async def send_product(delivery):
     message_body = json.dumps(data)
 
     # Publica el evento inicial con el estado "in process"
-    routing_key = "order.delivering"
+    routing_key = "orders.delivering"
     try:
         await publish_event(message_body, routing_key)
     except Exception as e:
@@ -227,7 +227,7 @@ async def send_product(delivery):
             logger.error(f"Error al obtener o actualizar el delivery: {e}")
             return
 
-    routing_key = "order.delivered"
+    routing_key = "orders.delivered"
     await publish_event(message_body, routing_key)
 
     # Cierra la sesión de la base de datos
