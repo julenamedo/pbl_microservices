@@ -9,18 +9,21 @@ MY_MACHINE = None
 
 # Database #########################################################################################
 async def get_db():
-    """Generates database sessions and closes them when finished."""
-    from app.sql.database import SessionLocal  # pylint: disable=import-outside-toplevel
-    logger.debug("Getting database SessionLocal")
+    """Generates SQLAlchemy database sessions and closes them when finished."""
+    from app.sql.database import SessionLocal
+    logger.debug("Starting SQLAlchemy session...")
     async with SessionLocal() as db:
         try:
+            logger.debug("Yielding SQLAlchemy session...")
             yield db
+            logger.debug("Committing SQLAlchemy session...")
             await db.commit()
         except Exception as e:
-            logger.error(f"Error en la sesión de base de datos: {e}")
+            logger.error(f"Error in database session: {e}")
             await db.rollback()
-            raise  # Relanza la excepción para asegurar que sea gestionada en la llamada
+            raise
         finally:
+            logger.debug("Closing SQLAlchemy session...")
             await db.close()
 
 

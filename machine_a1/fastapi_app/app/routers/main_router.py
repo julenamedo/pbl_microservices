@@ -76,10 +76,9 @@ async def health_check():
     tags=['Machine_A1']
 )
 async def machine_status(
-        # my_machine: Machine = Depends(get_machine)
+        #my_machine: Machine = Depends(get_machine)
 ):
     """Retrieve machine status"""
     logger.debug("GET '/machine_a1/status' endpoint called.")
     machine_status = await crud.get_status_of_machine()
     return machine_status
-

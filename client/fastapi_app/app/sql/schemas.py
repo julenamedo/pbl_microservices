@@ -27,10 +27,10 @@ class UserBase(BaseModel):
         default="calle postas",
         example="calle postas"
     )
-    zip_code: str = Field(
+    zip_code: int = Field(  # Changed from str to int
         description="The postal code of the client.",
-        default="01002",
-        example="01002"
+        default=1002,
+        example=1002
     )
     rol: str = Field(
         description="The role of the client.",

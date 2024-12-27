@@ -1,7 +1,10 @@
 CREATE TABLE IF NOT EXISTS users (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
+    email STRING(256) NOT NULL,
     username TEXT NOT NULL UNIQUE,
     password TEXT NOT NULL,
+    address STRING(256) NOT NULL,
+    zip_code INTEGER NOT NULL,
     creation_date DATETIME DEFAULT CURRENT_TIMESTAMP,
     rol TEXT DEFAULT 'user'
 );

@@ -15,4 +15,6 @@ async def set_status_of_machine(status):
     machine_status = status
 
 async def get_status_of_machine():
-    return machine_status
+    return {
+        "status": machine_status
+    }

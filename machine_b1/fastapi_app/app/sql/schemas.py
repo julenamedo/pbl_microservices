@@ -11,10 +11,5 @@ class MachineStatusResponse(BaseModel):
     status: str = Field(
         description="Machine's current status",
         default=None,
-        example="Waiting"
+        example="Machine Status: Idle"
     )
-    working_piece: Optional[int] = Field(
-        description="Current working piece id. None if not working piece.",
-        example=1
-    )
-    queue: List[int] = Field(description="Queued piece ids")

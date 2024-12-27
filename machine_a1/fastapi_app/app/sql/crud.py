@@ -9,9 +9,13 @@ logger = logging.getLogger(__name__)
 
 machine_status = "Machine Status: Idle"
 
+
 async def set_status_of_machine(status):
     global machine_status
     machine_status = status
 
+
 async def get_status_of_machine():
-    return machine_status
+    return {
+        "status": machine_status
+    }

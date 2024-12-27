@@ -57,7 +57,6 @@ class Order(BaseModel):
     description = Column(TEXT, nullable=False, default="No description")
     status = Column(String(256), nullable=False)
     id_client = Column(Integer, nullable=False)
-    pieces = relationship("Piece", back_populates="order", lazy="joined")
 
     def as_dict(self):
         """Return the order item as dict."""
