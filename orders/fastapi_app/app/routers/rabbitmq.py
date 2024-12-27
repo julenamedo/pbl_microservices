@@ -102,7 +102,7 @@ async def on_delivery_checked_order_cancel_message(message):
             await publish_command(message_body, routing_key)
         else:
             db_order = await crud.update_order_status(db, delivery['id_order'], models.Order.STATUS_QUEUED)
-            await crud.create_sagas_history(db_saga, delivery['id_order'], db_order.status_order)
+            await crud.create_sagas_history(db_saga, delivery['id_order'], db_order.status)
         await db.close()
         await db_saga.close()
         await db_catalog.close()

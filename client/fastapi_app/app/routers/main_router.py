@@ -132,7 +132,7 @@ async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(s
                 "message": "ERROR - Failed to authenticate client"
             }
             message_body = json.dumps(data)
-            routing_key = "client.verify.error"
+            routing_key = "orders.verify.error"
             await rabbitmq_publish_logs.publish_log(message_body, routing_key)
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
@@ -146,30 +146,30 @@ async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(s
             "message": "INFO - Token extracted, proceeding to verify"
         }
         message_body = json.dumps(data)
-        routing_key = "client.verify.info"
+        routing_key = "orders.verify.info"
         await rabbitmq_publish_logs.publish_log(message_body, routing_key)
-        return verify_access_token(token)
+
+        # Add await here
+        payload = await verify_access_token(token)
+        return payload
 
     except HTTPException as e:
-        # Manejar específicamente las excepciones HTTP y relanzarlas
         logger.error(f"HTTPException in get_current_user: {e.detail}")
-        logger.error(f"JWTError in get_current_user: {str(e)}")
         data = {
             "message": "ERROR - Error in get_current_user"
         }
         message_body = json.dumps(data)
-        routing_key = "client.verify.error"
+        routing_key = "orders.verify.error"
         await rabbitmq_publish_logs.publish_log(message_body, routing_key)
         raise e
 
     except JWTError as e:
-        # Manejar específicamente errores relacionados al token
         logger.error(f"JWTError in get_current_user: {str(e)}")
         data = {
             "message": "ERROR - Error in get_current_user"
         }
         message_body = json.dumps(data)
-        routing_key = "client.verify.error"
+        routing_key = "orders.verify.error"
         await rabbitmq_publish_logs.publish_log(message_body, routing_key)
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
@@ -177,7 +177,6 @@ async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(s
         )
 
     except Exception as e:
-        # Loguear errores inesperados y evitar que escalen a un error 500
         logger.error(f"Unexpected error in get_current_user: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,

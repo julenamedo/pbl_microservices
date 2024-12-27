@@ -18,10 +18,11 @@ logger = logging.getLogger(__name__)
 async def create_order_from_schema(db: AsyncSession, order):
     """Persist a new order into the database."""
     db_order = models.Order(
-        number_of_pieces=order.number_of_pieces,
+        number_of_pieces_a=order.number_of_pieces_a,
+        number_of_pieces_b=order.number_of_pieces_b,
         description=order.description,
-        status=models.Order.STATUS_PAYMENT_PENDING,
-        id_client=order.id_client
+        id_client=order.id_client,
+        status=models.Order.STATUS_DELIVERY_PENDING
     )
     db.add(db_order)
     await db.commit()
