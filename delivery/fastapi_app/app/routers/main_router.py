@@ -234,57 +234,6 @@ async def create_address(
     return await crud.create_address(db, id_client, address_data.address, address_data.zip_code)
 
 
-@router.post(
-    "/create_delivery",
-    response_model=schemas.Delivery,
-    summary="Create a new delivery",
-    status_code=status.HTTP_201_CREATED,
-    tags=["Delivery"]
-)
-async def create_delivery(
-    delivery_data: schemas.DeliveryCreate,
-    current_user: dict = Depends(get_current_user),
-    db: AsyncSession = Depends(dependencies.get_db),
-):
-
-    try:
-        id_client = delivery_data.id_client or current_user["id_client"]
-        role = current_user["role"]
-
-        # Si el usuario no es admin, verificar que no intente crear para otro id_client
-        if role != "admin":
-            data = {
-                "message": "ERROR - You don't have permissions"
-            }
-            message_body = json.dumps(data)
-            routing_key = "delivery.create_delivery.error"
-            await rabbitmq_publish_logs.publish_log(message_body, routing_key)
-            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
-
-        logger.debug(f"Attempting to create delivery: id_client={id_client}, order_id={delivery_data.order_id}")
-        result = await crud.create_delivery(db, id_client, delivery_data.order_id)
-        logger.debug(f"Delivery successfully created: {result}")
-        data = {
-            "message": "INFO - delivery created"
-        }
-        message_body = json.dumps(data)
-        routing_key = "delivery.create_delivery.info"
-        await rabbitmq_publish_logs.publish_log(message_body, routing_key)
-        return result
-
-    except HTTPException as http_error:
-        logger.error(f"HTTP error during delivery creation: {http_error.detail}")
-        data = {
-            "message": "ERROR - HTTP error during delivery creation"
-        }
-        message_body = json.dumps(data)
-        routing_key = "delivery.create_delivery.error"
-        await rabbitmq_publish_logs.publish_log(message_body, routing_key)
-        raise http_error
-
-    except Exception as e:
-        logger.error(f"Unexpected error during delivery creation: {e}")
-        raise HTTPException(status_code=500, detail="Internal Server Error")
 
 @router.get(
     "/get_address",
@@ -377,7 +326,7 @@ async def get_delivery(
 
 @router.put(
     "/update_address",
-    response_model=schemas.UserAddress,
+    response_model=schemas.UserAddressBase,
     summary="Update address",
     status_code=status.HTTP_200_OK,
     tags=["Address"]
@@ -434,36 +383,36 @@ async def update_delivery(
     current_user: dict = Depends(get_current_user),
     db: AsyncSession = Depends(dependencies.get_db),
 ):
+    try:
+        logger.debug(f"Starting update_delivery with order_id: {order_id}, delivery_data: {delivery_data}")
 
-    role = current_user["role"]
-    delivery = await crud.get_delivery_by_order_id(db, order_id)
+        async with db.begin():  # Ensure proper transaction management
+            role = current_user["role"]
+            delivery = await crud.get_delivery_by_order_id(db, order_id)
+            if not delivery:
+                logger.debug(f"No delivery found for order_id: {order_id}")
+                raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Delivery not found")
 
-    if not delivery:
-        data = {
-            "message": "ERROR - Delivery not found"
-        }
-        message_body = json.dumps(data)
-        routing_key = "delivery.update_delivery.error"
-        await rabbitmq_publish_logs.publish_log(message_body, routing_key)
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Delivery not found")
+            if role != "admin":
+                logger.debug(f"User {current_user['id']} does not have admin permissions")
+                raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
 
-    # Si el usuario no es admin, verificar que sea el propietario
-    if role != "admin":
-        data = {
-            "message": "ERROR - You don't have permissions"
-        }
-        message_body = json.dumps(data)
-        routing_key = "delivery.update_delivery.error"
-        await rabbitmq_publish_logs.publish_log(message_body, routing_key)
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
+            updated_delivery = await crud.update_delivery(db, order_id, delivery_data.status)
+            logger.debug(f"Delivery updated successfully: {updated_delivery}")
 
-    updated_delivery = await crud.update_delivery(db, order_id, delivery_data.status)
-    data = {
-        "message": "INFO - delivery updated successfully"
-    }
-    message_body = json.dumps(data)
-    routing_key = "delivery.update_delivery.info"
-    return updated_delivery
+            message_body = json.dumps({"message": "INFO - delivery updated successfully"})
+            routing_key = "delivery.update_delivery.info"
+            await rabbitmq_publish_logs.publish_log(message_body, routing_key)
+
+            return updated_delivery
+    except HTTPException as e:
+        logger.error(f"HTTP exception: {e.detail}")
+        raise e
+    except Exception as e:
+        logger.error(f"Unexpected error in update_delivery: {e}")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal Server Error")
+
+
 
 
 @router.delete(
