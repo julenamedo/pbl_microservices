@@ -73,7 +73,7 @@ async def on_message_payment_check(message):
 async def subscribe_command_payment_check():
     # Create queue
     queue_name = "payment.check"
-    queue = await channel.declare_queue(name=queue_name, exclusive=True)
+    queue = await channel.declare_queue(name=queue_name, exclusive=False)
     # Bind the queue to the exchange
     routing_key = "payment.check"
     await queue.bind(exchange=exchange_commands_name, routing_key=routing_key)

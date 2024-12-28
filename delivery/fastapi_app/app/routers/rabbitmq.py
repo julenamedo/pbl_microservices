@@ -118,7 +118,7 @@ async def on_message_delivery_cancel(message):
 async def subscribe_delivery_cancel():
     # Create queue
     queue_name = "delivery.cancel"
-    queue = await channel.declare_queue(name=queue_name, exclusive=True)
+    queue = await channel.declare_queue(name=queue_name, exclusive=False)
     # Bind the queue to the exchange
     routing_key = "delivery.cancel"
     await queue.bind(exchange=exchange_commands_name, routing_key=routing_key)
@@ -159,13 +159,16 @@ async def on_create_message(message):
         await crud.create_delivery(db, order["id_order"], order["id_client"], status_delivery_address_check)
         message = json.dumps(data)
         routing_key = "delivery.checked"
+        logger.debug("Publishing message to delivery.checked: %s", message)
         await publish_response(message, routing_key)
+        logger.debug("Message published to delivery.checked")
+
         await db.close()
 
 async def subscribe_delivery_check():
     # Create queue
     queue_name = "delivery.check"
-    queue = await channel.declare_queue(name=queue_name, exclusive=True)
+    queue = await channel.declare_queue(name=queue_name, exclusive=False)
     # Bind the queue to the exchange
     routing_key = "delivery.check"
     await queue.bind(exchange=exchange_commands_name, routing_key=routing_key)
@@ -177,7 +180,7 @@ async def subscribe_delivery_check():
 async def subscribe_produced():
     # Create queue
     queue_name = "orders.produced"
-    queue = await channel.declare_queue(name=queue_name, exclusive=True)
+    queue = await channel.declare_queue(name=queue_name, exclusive=False)
     # Bind the queue to the exchange
     routing_key = "orders.produced"
     await queue.bind(exchange=exchange_name, routing_key=routing_key)

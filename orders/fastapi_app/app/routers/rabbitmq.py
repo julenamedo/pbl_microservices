@@ -90,8 +90,8 @@ async def on_delivery_checked_order_cancel_message(message):
         if delivery['status']:
             db_order = await crud.update_order_status(db, delivery['id_order'], models.Order.STATUS_ORDER_CANCEL_PAYMENT_PENDING)
             await crud.create_sagas_history(db_saga, delivery['id_order'], db_order.status)
-            db_catalog_piece_a = await crud.get_piece_from_catalog(db_catalog, "A")
-            db_catalog_piece_b = await crud.get_piece_from_catalog(db_catalog, "B")
+            db_catalog_piece_a = await crud.get_piece_from_catalog_by_piece_type(db_catalog, "A")
+            db_catalog_piece_b = await crud.get_piece_from_catalog_by_piece_type(db_catalog, "B")
             data = {
                 "id_order": db_order.id,
                 "id_client": db_order.id_client,
@@ -134,7 +134,7 @@ async def on_order_delivered_message(message):
 async def subscribe_order_finished():
     # Create a queue
     queue_name = "orders.delivered"
-    queue = await channel.declare_queue(name=queue_name, exclusive=True)
+    queue = await channel.declare_queue(name=queue_name, exclusive=False)
     # Bind the queue to the exchange
     routing_key = "orders.delivered"
     await queue.bind(exchange=exchange_name, routing_key=routing_key)
@@ -240,7 +240,7 @@ async def on_payment_checked_message(message):
 async def subscribe_delivery_cancel():
     # Create queue
     queue_name = "delivery.canceled"
-    queue = await channel.declare_queue(name=queue_name, exclusive=True)
+    queue = await channel.declare_queue(name=queue_name, exclusive=False)
     # Bind the queue to the exchange
     routing_key = "delivery.canceled"
     await queue.bind(exchange=exchange_responses_name, routing_key=routing_key)
@@ -253,7 +253,7 @@ async def subscribe_delivery_cancel():
 async def subscribe_command_payment_checked():
     # Create a queue
     queue_name = "payment.checked"
-    queue = await channel.declare_queue(name=queue_name, exclusive=True)
+    queue = await channel.declare_queue(name=queue_name, exclusive=False)
     # Bind the queue to the exchange
     routing_key = "payment.checked"
     await queue.bind(exchange=exchange_responses_name, routing_key=routing_key)
@@ -269,69 +269,83 @@ async def subscribe_command_payment_checked():
 async def on_delivery_checked_message(message):
     """Manejador del mensaje de 'delivery checked'."""
     async with message.process():
-
         try:
+            logger.debug("he recibido mensaje de delivery.checked")
             db = SessionLocal()
             db_saga = SessionLocal()
             db_catalog = SessionLocal()
-            # Carga el mensaje recibido
-            delivery = json.loads(message.body.decode())
 
+            # Decodificación del mensaje
+            try:
+                delivery = json.loads(message.body)
+                logger.debug(f"Mensaje decodificado correctamente: {delivery}")
+            except json.JSONDecodeError as e:
+                logger.error(f"Error al decodificar el mensaje JSON: {e}")
+                return
 
-            # Maneja la lógica basada en el estado del delivery
+            # Validación del mensaje
+            required_keys = ['status', 'id_order', 'id_client']
+            if not all(key in delivery for key in required_keys):
+                logger.error(f"Mensaje incompleto recibido: {delivery}")
+                return
+
+            # Lógica basada en el estado del delivery
             if delivery['status']:
-                logger.debug("el estado de el delivery ESS:")
+                logger.debug("Procesando estado 'true'")
                 async with db:
-                    db_order = await crud.update_order_status(db, delivery['id_order'],
-                                                              models.Order.STATUS_PAYMENT_PENDING)
+                    logger.debug("Actualizando estado de la orden a PAYMENT_PENDING")
+                    db_order = await crud.update_order_status(db, delivery['id_order'], models.Order.STATUS_PAYMENT_PENDING)
 
-                    # Verifica si la orden existe antes de continuar
                     if not db_order:
                         logger.error(f"Orden con ID {delivery['id_order']} no encontrada.")
                         return
 
                     async with db_saga:
                         if await crud.check_sagas_payment_status(db, delivery['id_order']) == 0:
-                            await crud.create_sagas_history(db_saga, delivery['id_order'],
-                                                            models.Order.STATUS_PAYMENT_PENDING)
+                            await crud.create_sagas_history(db_saga, delivery['id_order'], models.Order.STATUS_PAYMENT_PENDING)
 
-                    db_catalog_piece_a = await crud.get_piece_from_catalog(db_catalog, "A")
-                    db_catalog_piece_b = await crud.get_piece_from_catalog(db_catalog, "B")
-                    # Construye el mensaje para la cola de pagos
+                    logger.debug("Obteniendo piezas del catálogo")
+                    db_catalog_piece_a = await crud.get_piece_from_catalog_by_piece_type(db_catalog, "A")
+                    db_catalog_piece_b = await crud.get_piece_from_catalog_by_piece_type(db_catalog, "B")
+
+                    if not db_catalog_piece_a or not db_catalog_piece_b:
+                        logger.error("No se encontraron las piezas del catálogo")
+                        return
+
                     data = {
-                        "id_order": db_order.id,  # Asegúrate de que el atributo sea correcto
+                        "id_order": db_order.id,
                         "id_client": db_order.id_client,
                         "movement": -(db_order.number_of_pieces_a * db_catalog_piece_a.price + db_order.number_of_pieces_b * db_catalog_piece_b.price)
                     }
                     message_body = json.dumps(data)
                     routing_key = "payment.check"
-
-                    # Publica el comando
+                    logger.debug("Publicando mensaje en la cola de pagos")
                     await publish_command(message_body, routing_key)
-
             else:
+                logger.debug("Procesando estado 'false'")
                 async with db:
                     db_order = await crud.update_order_status(db, delivery['id_order'], models.Order.STATUS_CANCELED)
 
-                    # Verifica si la orden existe antes de continuar
                     if not db_order:
                         logger.error(f"Orden con ID {delivery['id_order']} no encontrada para cancelar.")
                         return
 
                     async with db_saga:
                         await crud.create_sagas_history(db_saga, delivery['id_order'], models.Order.STATUS_CANCELED)
-
+        except Exception as e:
+            logger.error(f"Error al procesar el mensaje: {e}")
+        finally:
             await db.close()
             await db_saga.close()
             await db_catalog.close()
-        except Exception as e:
-            logger.error(f"Error al procesar el mensaje: {e}")
+            logger.debug("Conexiones a la base de datos cerradas")
+
 
 
 async def subscribe_delivery_checked():
     # Create a queue
     queue_name = "delivery.checked"
-    queue = await channel.declare_queue(name=queue_name, exclusive=True)
+    queue = await channel.declare_queue(name=queue_name, exclusive=False)
     # Bind the queue to the exchange
     routing_key = "delivery.checked"
 

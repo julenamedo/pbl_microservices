@@ -18,6 +18,7 @@ class PieceBase(BaseModel):
         example="A"
     )
     manufacturing_date: Optional[datetime] = Field(
+        default=None,  # Explicitly set the default to None
         description="Date piece manufactured.",
         example="2022-07-22T17:32:32.193211"
     )

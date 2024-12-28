@@ -78,50 +78,95 @@ async def subscribe_channel():
 
 async def on_piece_order(message):
     async with message.process():
-        pieces_ordered = json.loads(message.body)
-        db = SessionLocal()
-        enough_pieces = True
-        for _ in range(0, pieces_ordered['number_of_pieces_a']):
-            db_pieces = await crud.get_order_pieces_by_type(db, None, "A")
-            if db_pieces:
-                db_piece = await crud.change_piece_order_id(db, db_pieces[0].id_piece, pieces_ordered['id_order'])
-            else:
-                piece = schemas.PieceBase(
-                    piece_type="A",
-                    status_piece=models.Piece.STATUS_QUEUED,
-                    id_order=pieces_ordered['id_order'],
-                    id_client=pieces_ordered['id_client']
-                )
-                await crud.create_piece(db, piece)
-                enough_pieces = False
-        for _ in range(0, pieces_ordered['number_of_pieces_b']):
-            db_pieces = await crud.get_order_pieces_by_type(db, None, "B")
-            if db_pieces:
-                db_piece = await crud.change_piece_order_id(db, db_pieces[0].id_piece, pieces_ordered['id_order'])
-            else:
-                piece = schemas.PieceBase(
-                    piece_type="B",
-                    status_piece=models.Piece.STATUS_QUEUED,
-                    id_order=pieces_ordered['id_order'],
-                    id_client=pieces_ordered['id_client']
-                )
-                await crud.create_piece(db, piece)
-                enough_pieces = False
-        if enough_pieces:
-            data = {
-                "id_order": db_piece.id_order,
-                "id_client": pieces_ordered['id_client']
-            }
-            message_body = json.dumps(data)
-            routing_key = "orders.produced"
-            await publish(message_body, routing_key)
-        await db.close()
+        try:
+            # Decodificación del mensaje
+            try:
+                pieces_ordered = json.loads(message.body)
+                logger.debug(f"Mensaje decodificado: {pieces_ordered}")
+            except json.JSONDecodeError as e:
+                logger.error(f"Error al decodificar el mensaje JSON: {e}")
+                return
+
+            db = SessionLocal()
+            enough_pieces = True
+
+            # Procesar piezas de tipo A
+            for _ in range(0, pieces_ordered['number_of_pieces_a']):
+                db_pieces = await crud.get_order_pieces_by_type(db, None, "A")
+                if db_pieces:
+                    try:
+                        db_piece = await crud.change_piece_order_id(db, db_pieces[0].id_piece, pieces_ordered['id_order'])
+                        logger.debug(f"Pieza A actualizada: {db_piece}")
+                    except Exception as e:
+                        logger.error(f"Error al cambiar el ID de la orden de la pieza A: {e}")
+                        return
+                else:
+                    piece = schemas.PieceBase(
+                        piece_type="A",
+                        status_piece=models.Piece.STATUS_QUEUED,
+                        id_order=pieces_ordered['id_order'],
+                        id_client=pieces_ordered['id_client']
+                    )
+                    try:
+                        await crud.create_piece(db, piece)
+                        logger.debug(f"Pieza A creada: {piece}")
+                    except Exception as e:
+                        logger.error(f"Error al crear una nueva pieza A: {e}")
+                        return
+                    enough_pieces = False
+
+            # Procesar piezas de tipo B
+            for _ in range(0, pieces_ordered['number_of_pieces_b']):
+                db_pieces = await crud.get_order_pieces_by_type(db, None, "B")
+                if db_pieces:
+                    try:
+                        db_piece = await crud.change_piece_order_id(db, db_pieces[0].id_piece, pieces_ordered['id_order'])
+                        logger.debug(f"Pieza B actualizada: {db_piece}")
+                    except Exception as e:
+                        logger.error(f"Error al cambiar el ID de la orden de la pieza B: {e}")
+                        return
+                else:
+                    piece = schemas.PieceBase(
+                        piece_type="B",
+                        status_piece=models.Piece.STATUS_QUEUED,
+                        id_order=pieces_ordered['id_order'],
+                        id_client=pieces_ordered['id_client']
+                    )
+                    try:
+                        await crud.create_piece(db, piece)
+                        logger.debug(f"Pieza B creada: {piece}")
+                    except Exception as e:
+                        logger.error(f"Error al crear una nueva pieza B: {e}")
+                        return
+                    enough_pieces = False
+
+            # Publicar en RabbitMQ si hay suficientes piezas
+            if enough_pieces:
+                data = {
+                    "id_order": db_piece.id_order,
+                    "id_client": pieces_ordered['id_client']
+                }
+                try:
+                    message_body = json.dumps(data)
+                    routing_key = "orders.produced"
+                    logger.debug(f"Publicando mensaje: {message_body} en routing_key: {routing_key}")
+                    await publish(message_body, routing_key)
+                except Exception as e:
+                    logger.error(f"Error al publicar el mensaje: {e}")
+                    return
+
+        except Exception as e:
+            logger.error(f"Error general en on_piece_order: {e}")
+        finally:
+            await db.close()
+            logger.debug("Conexión a la base de datos cerrada.")
+
 
 
 async def subscribe_piece_order():
     # Create a queue
     queue_name = "warehouse.requested"
-    queue = await channel.declare_queue(name=queue_name, exclusive=True)
+    queue = await channel.declare_queue(name=queue_name, exclusive=False)
     # Bind the queue to the exchange
     routing_key = "warehouse.requested"
     await queue.bind(exchange=exchange_name, routing_key=routing_key)
@@ -170,7 +215,7 @@ async def subscribe_pieces():
 async def subscribe_delivery_cancel():
     # Create queue
     queue_name = "warehouse.cancel_check"
-    queue = await channel.declare_queue(name=queue_name, exclusive=True)
+    queue = await channel.declare_queue(name=queue_name, exclusive=False)
     # Bind the queue to the exchange
     routing_key = "warehouse.cancel_check"
     await queue.bind(exchange=exchange_responses_name, routing_key=routing_key)
@@ -194,7 +239,7 @@ async def on_delivering(message):
 
 async def subscribe_delivering():
     queue_name = "orders.delivering"
-    queue = await channel.declare_queue(name=queue_name, exclusive=True)
+    queue = await channel.declare_queue(name=queue_name, exclusive=False)
     # Bind the queue to the exchange
     routing_key = "orders.delivering"
 
