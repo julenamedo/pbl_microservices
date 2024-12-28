@@ -84,8 +84,7 @@ async def get_order_list(db: AsyncSession):
 
 async def get_order(db: AsyncSession, order_id):
     """Load an order from the database."""
-    stmt = select(models.Order).join(models.Order.pieces).where(models.Order.id == order_id)
-    order = await get_element_statement_result(db, stmt)
+    order = await get_element_by_id(db, models.Order, order_id)
     return order
 
 

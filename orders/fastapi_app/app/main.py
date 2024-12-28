@@ -11,7 +11,7 @@ from .consulService.BLConsul import register_consul_service, unregister_consul_s
 from fastapi import FastAPI
 from app.routers import main_router, rabbitmq, rabbitmq_publish_logs
 from app.sql import models
-from app.sql import database
+from app.sql import database, crud
 import global_variables
 from global_variables.global_variables import update_system_resources_periodically, set_rabbitmq_status, get_rabbitmq_status
 # Configure logging ################################################################################
@@ -64,6 +64,9 @@ async def startup_event():
         logger.info("Creating database tables")
         async with database.engine.begin() as conn:
             await conn.run_sync(models.Base.metadata.create_all)
+        db = database.SessionLocal()
+        _ = await crud.create_catalog_from_schema(db)
+        await db.close()
         await rabbitmq.subscribe_channel()
         await rabbitmq_publish_logs.subscribe_channel()
         logger.info("Se ha suscrito")

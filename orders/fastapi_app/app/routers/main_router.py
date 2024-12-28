@@ -226,7 +226,7 @@ async def create_order(
         raise_and_log_error(logger, status.HTTP_409_CONFLICT, f"Error creating order: {exc}")
 
 @router.get(
-    "/order/{order_id}",
+    "/order/retrieve/{order_id}",
     summary="Retrieve single order by id",
     responses={
         status.HTTP_200_OK: {
@@ -306,7 +306,7 @@ async def cancel_order(
 
 
 @router.put(
-    "/order/{order_id}",
+    "/order/update/{order_id}",
     summary="Update order",
     response_model=schemas.Order,
     responses={
@@ -421,7 +421,8 @@ async def get_sagas_history(
     tags=['Order']
 )
 async def get_catalog(
-        db: AsyncSession = Depends(dependencies.get_db)
+        db: AsyncSession = Depends(dependencies.get_db),
+        current_user: dict = Depends(get_current_user)
 ):
     """Retrieve catalog"""
     logger.debug("GET '/order/catalog' endpoint called.")
