@@ -200,7 +200,7 @@ async def subscribe_delivery_check():
 
 async def subscribe_produced():
     # Create queue
-    queue_name = "orders.produced"
+    queue_name = "orders.produced_delivery"
     queue = await channel.declare_queue(name=queue_name, exclusive=False)
     # Bind the queue to the exchange
     routing_key = "orders.produced"

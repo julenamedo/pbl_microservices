@@ -176,7 +176,7 @@ async def on_produced_message(message):
 async def subscribe_produced():
     # Create queue
     # Viene de warehouse
-    queue_name = "orders.produced"
+    queue_name = "orders.produced_orders"
     queue = await channel.declare_queue(name=queue_name, exclusive=False)
     # Bind the queue to the exchange
     routing_key = "orders.produced"
