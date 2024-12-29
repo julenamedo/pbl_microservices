@@ -88,12 +88,12 @@ async def on_delivery_checked_order_cancel_message(message):
         db_catalog = SessionLocal()
         # meter un parametro en el mensaje desde delivery que sea status (T/F)
         if delivery['status']:
-            db_order = await crud.update_order_status(db, delivery['id_order'], models.Order.STATUS_ORDER_CANCEL_PAYMENT_PENDING)
-            await crud.create_sagas_history(db_saga, delivery['id_order'], db_order.status)
+            db_order = await crud.update_order_status(db, delivery['order_id'], models.Order.STATUS_ORDER_CANCEL_PAYMENT_PENDING)
+            await crud.create_sagas_history(db_saga, delivery['order_id'], db_order.status)
             db_catalog_piece_a = await crud.get_piece_from_catalog_by_piece_type(db_catalog, "A")
             db_catalog_piece_b = await crud.get_piece_from_catalog_by_piece_type(db_catalog, "B")
             data = {
-                "id_order": db_order.id,
+                "order_id": db_order.id,
                 "id_client": db_order.id_client,
                 "movement": (db_order.number_of_pieces_a * db_catalog_piece_a.price + db_order.number_of_pieces_b * db_catalog_piece_b.price)
             }
@@ -101,8 +101,8 @@ async def on_delivery_checked_order_cancel_message(message):
             routing_key = "payment.check_cancel"
             await publish_command(message_body, routing_key)
         else:
-            db_order = await crud.update_order_status(db, delivery['id_order'], models.Order.STATUS_QUEUED)
-            await crud.create_sagas_history(db_saga, delivery['id_order'], db_order.status)
+            db_order = await crud.update_order_status(db, delivery['order_id'], models.Order.STATUS_QUEUED)
+            await crud.create_sagas_history(db_saga, delivery['order_id'], db_order.status)
         await db.close()
         await db_saga.close()
         await db_catalog.close()
@@ -142,6 +142,47 @@ async def subscribe_order_finished():
     async with queue.iterator() as queue_iter:
         async for message in queue_iter:
             await on_order_delivered_message(message)
+
+
+
+async def on_payment_checked_order_cancel_message(message):
+    async with message.process():
+        payment = json.loads(message.body)
+        db = SessionLocal()
+        db_saga = SessionLocal()
+        if payment['status']:
+            db_order = await crud.update_order_status(db, payment['order_id'], models.Order.STATUS_ORDER_CANCEL_WAREHOUSE_PENDING)
+            await crud.create_sagas_history(db_saga, payment['order_id'], db_order.status_)
+            data = {
+                "id_order": db_order.id,
+                "id_client": db_order.id_client
+            }
+            message_body = json.dumps(data)
+            routing_key = "warehouse.check_cancel"
+            await publish_command(message_body, routing_key)
+        else:
+            db_order = await crud.update_order_status(db, payment['order_id'], models.Order.STATUS_ORDER_CANCEL_DELIVERY_REDELIVERING)
+            await crud.create_sagas_history(db_saga, payment['order_id'], db_order.status)
+            data = {
+                "order_id": db_order.id
+            }
+            message_body = json.dumps(data)
+            routing_key = "delivery.revert_cancel"
+            await publish_command(message_body, routing_key)
+        await db.close()
+        await db_saga.close()
+
+async def subscribe_payment_checked_order_cancel():
+    # Create a queue
+    queue_name = "payment.checked_cancel"
+    queue = await channel.declare_queue(name=queue_name, exclusive=False)
+    # Bind the queue to the exchange
+    routing_key = "payment.checked_cancel"
+    await queue.bind(exchange=exchange_responses_name, routing_key=routing_key)
+    # Set up a message consumer
+    async with queue.iterator() as queue_iter:
+        async for message in queue_iter:
+            await on_payment_checked_order_cancel_message(message)
 
 
 async def on_delivering_message(message):

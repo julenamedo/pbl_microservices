@@ -265,44 +265,55 @@ async def get_single_order(
 
 
 @router.post(
-    "/order/cancel/{id_order}",
+    "/order/cancel/{order_id}",
     response_model=schemas.Order,
     summary="Cancel single order",
     status_code=status.HTTP_200_OK,
     tags=["Order"]
 )
 async def cancel_order(
-        order_id: int,
+        order_id: int,  # Matches the path parameter name
         db: AsyncSession = Depends(dependencies.get_db)
 ):
     """Cancel single order endpoint."""
     logger.debug("POST '/order/cancel/%i' endpoint called.", order_id)
     try:
+        # Retrieve the order
         order = await crud.get_order(db, order_id)
-        if (order.status == models.Order.STATUS_DELIVERY_PENDING) or (
-                order.status == models.Order.STATUS_PAYMENT_PENDING) or (
-                order.status == models.Order.STATUS_DELIVERY_CANCELING):
-            raise_and_log_error(logger, status.HTTP_409_CONFLICT,
-                                f"Order can't be canceled as it is being processed yet, please try again later.")
-        elif (order.status == models.Order.STATUS_QUEUED):
+        if not order:
+            raise_and_log_error(logger, status.HTTP_404_NOT_FOUND, f"Order {order_id} not found.")
+
+        # Check the order status
+        if order.status in (
+            models.Order.STATUS_DELIVERY_PENDING,
+            models.Order.STATUS_PAYMENT_PENDING,
+            models.Order.STATUS_DELIVERY_CANCELING,
+        ):
+            raise_and_log_error(
+                logger,
+                status.HTTP_409_CONFLICT,
+                f"Order can't be canceled as it is being processed yet, please try again later."
+            )
+
+        elif order.status == models.Order.STATUS_QUEUED:
             db_order = await crud.cancel_order(db, order_id)
-            data = {
-                "message": "INFO - Order cancelation started"
-            }
+            data = {"message": "INFO - Order cancelation started"}
             message_body = json.dumps(data)
             routing_key = "orders.cancel_order.info"
             await rabbitmq_publish_logs.publish_log(message_body, routing_key)
             return db_order
+
         else:
             raise_and_log_error(logger, status.HTTP_409_CONFLICT, f"Unknown error at order cancelation.")
+
     except Exception as exc:
-        data = {
-            "message": "ERROR - Error canceling the order"
-        }
+        logger.error(f"Error canceling order ID {order_id}: {exc}")
+        data = {"message": "ERROR - Error canceling the order"}
         message_body = json.dumps(data)
         routing_key = "orders.cancel_order.error"
         await rabbitmq_publish_logs.publish_log(message_body, routing_key)
         raise_and_log_error(logger, status.HTTP_409_CONFLICT, f"Error canceling order: {exc}")
+
 
 
 @router.put(

@@ -84,7 +84,40 @@ async def subscribe_command_payment_check():
 
 
 
-# Faltaria ver si necesita la de cancel
+# Cancel
+
+async def on_message_payment_check_order_cancel(message):
+    async with message.process():
+        payment = json.loads(message.body)
+        db = SessionLocal()
+        try:
+            db_payment = await crud.create_recharge(db, payment)
+            # Crear evento con payment de ID order correcto
+            payment_status = True
+        except Exception as exc:
+            # Crear evento con payment de ID order incorrecto
+            payment_status = False
+        await db.close()
+        data = {
+            "order_id": payment['order_id'],
+            "status": payment_status
+        }
+        message_body = json.dumps(data)
+        routing_key = "payment.checked_cancel"
+        await publish_response(message_body, routing_key)
+
+
+async def subscribe_payment_check_order_cancel():
+    # Create queue
+    queue_name = "payment.check_cancel"
+    queue = await channel.declare_queue(name=queue_name, exclusive=False)
+    # Bind the queue to the exchange
+    routing_key = "payment.check_cancel"
+    await queue.bind(exchange=exchange_commands_name, routing_key=routing_key)
+    # Set up a message consumer
+    async with queue.iterator() as queue_iter:
+        async for message in queue_iter:
+            await on_message_payment_check_order_cancel(message)
 
 async def publish_event(message_body, routing_key):
     # Publish the message to the exchange

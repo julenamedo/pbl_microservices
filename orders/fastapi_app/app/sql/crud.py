@@ -99,14 +99,14 @@ async def delete_order(db: AsyncSession, order_id):
     return await delete_element_by_id(db, models.Order, order_id)
 
 
-async def cancel_order(db: AsyncSession, id_order):
+async def cancel_order(db: AsyncSession, order_id):
     db_saga = SessionLocal()
-    db_order = await get_order(db, id_order)
-    db_order = await update_order_status(db, id_order, models.Order.STATUS_ORDER_CANCEL_DELIVERY_PENDING)
+    db_order = await get_order(db, order_id)
+    db_order = await update_order_status(db, order_id, models.Order.STATUS_ORDER_CANCEL_DELIVERY_PENDING)
     await create_sagas_history(db_saga, db_order.id_order, db_order.status)
     await db_saga.close()
     data = {
-        "id_order": db_order.id
+        "order_id": db_order.id
     }
     message_body = json.dumps(data)
     routing_key = "delivery.check_cancel"

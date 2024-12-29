@@ -91,6 +91,19 @@ async def update_piece_manufacturing_date_to_now(db: AsyncSession, piece_id):
     return db_piece
 
 
+async def create_recharge(db: AsyncSession, payment):
+    """Persist a new recharge into the database."""
+    if payment['movement'] <= 0:
+        raise Exception("Can not make negative recharge.")
+    db_payment = models.Payment(
+        id_client=payment['id_client'],
+        balance=payment['movement']
+    )
+    db.add(db_payment)
+    await db.commit()
+    await db.refresh(db_payment)
+    return db_payment
+
 async def get_piece_list(db: AsyncSession):
     """Load all the orders from the database."""
     stmt = select(models.Piece).join(models.Piece.order)

@@ -66,6 +66,7 @@ async def startup_event():
         await rabbitmq.subscribe_channel()
         await rabbitmq_publish_logs.subscribe_channel()
         asyncio.create_task(rabbitmq.subscribe_command_payment_check())
+        asyncio.create_task(rabbitmq.subscribe_payment_check_order_cancel())
         asyncio.create_task(update_system_resources_periodically(15))
 
         data = {

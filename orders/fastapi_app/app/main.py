@@ -78,6 +78,7 @@ async def startup_event():
         asyncio.create_task(rabbitmq.subscribe_delivering())
         asyncio.create_task(rabbitmq.subscribe_produced())
         asyncio.create_task(rabbitmq.subscribe_delivery_cancel())
+        asyncio.create_task(rabbitmq.subscribe_payment_checked_order_cancel())
         asyncio.create_task(rabbitmq.subscribe_command_payment_checked())
         asyncio.create_task(rabbitmq.subscribe_delivery_checked())
         asyncio.create_task(update_system_resources_periodically(15))

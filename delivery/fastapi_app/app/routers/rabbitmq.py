@@ -266,14 +266,14 @@ async def on_message_order_cancel_delivery_pending(message):
     async with message.process():
         order = json.loads(message.body)
         db = SessionLocal()
-        delivery = await crud.get_delivery_by_order(db, order['id_order'])
+        delivery = await crud.get_delivery_by_order(db, order['order_id'])
         status = False
         if delivery.status_delivery == models.Delivery.STATUS_CREATED:
-            await crud.update_delivery(db, order['id_order'], models.Delivery.STATUS_CANCELED)
+            await crud.update_delivery(db, order['order_id'], models.Delivery.STATUS_CANCELED)
             status = True
         await db.close()
         data = {
-            "id_order": order['id_order'],
+            "order_id": order['order_id'],
             "status": status
         }
         message_body = json.dumps(data)
