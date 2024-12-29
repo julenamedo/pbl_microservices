@@ -70,8 +70,8 @@ class DeliveryUpdate(BaseModel):
     """Schema for updating a Delivery."""
     status: Optional[str] = Field(
         None,
-        description="New status of the delivery",
-        example="COMPLETED"
+        description="New status of the delivery (Created, Canceled, Delivering, Delivered)",
+        example="Delivered"
     )
 
 

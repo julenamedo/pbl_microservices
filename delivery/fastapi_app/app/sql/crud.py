@@ -143,28 +143,17 @@ async def get_delivery_by_order(db: AsyncSession, order_id: int):
     return delivery
 
 
-async def update_delivery(db: AsyncSession, order_id: int, status: Optional[str]):
+async def update_delivery(db: AsyncSession, order_id: int, new_status: str):
     """Update the delivery status."""
     stmt = (
         update(models.Delivery)
         .where(models.Delivery.order_id == order_id)
-        .values(
-            status=status if status else models.Delivery.status
-        )
+        .values(status=new_status)
         .execution_options(synchronize_session="fetch")
     )
+    await db.execute(stmt)  # Executes within the caller's transaction
+    return await get_delivery_by_order_id(db, order_id)
 
-    # Ejecuta la consulta en el contexto de la transacción
-    async with db.begin():
-        result = await db.execute(stmt)
-
-    if result.rowcount == 0:
-        logger.debug("No delivery found for order_id %s. Update skipped.", order_id)
-        return None
-
-    logger.debug("Delivery updated for order_id %s", order_id)
-
-    return await get_delivery_by_order(db, order_id)
 
 
 async def delete_address(db: AsyncSession, id_client: int):
