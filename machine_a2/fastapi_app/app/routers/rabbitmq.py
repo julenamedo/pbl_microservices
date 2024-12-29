@@ -66,10 +66,10 @@ async def on_message(message):
         piece = json.loads(message.body)
         await crud.set_status_of_machine("Machine Status: Producing")
         await asyncio.sleep(3)
-        logger.info("Piece A produced: " + piece['piece_id'])
+        logger.info("Piece A produced: " + piece['id_piece'])
         await crud.set_status_of_machine("Machine Status: Idle")
         data = {
-            "id_piece": piece['piece_id']
+            "id_piece": piece['id_piece']
         }
         message_body = json.dumps(data)
         routing_key = "piece.produced"

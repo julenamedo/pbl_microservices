@@ -130,15 +130,36 @@ async def subscribe_delivery_cancel():
 
 async def on_produced_message(message):
     async with message.process():
-        order = json.loads(message.body)
-        db = SessionLocal()
-        db_delivery = await crud.get_delivery_by_order_id(db, order['id_order'])
-        if db_delivery.status != models.Delivery.STATUS_CANCELED:
-            db_delivery = await crud.update_delivery(db, order['id_order'], models.Delivery.STATUS_DELIVERING)
-            await db.close()
-            asyncio.create_task(send_product(db_delivery))
-        else:
-            await db.close()
+        try:
+            # Decode the message
+            order = json.loads(message.body)
+            logger.debug(f"Processing produced message: {order}")
+
+            # Use the database session
+            async for db in dependencies.get_db():  # Consume the generator
+                # Retrieve delivery
+                logger.debug(f"Fetching delivery for order_id: {order['id_order']}")
+                db_delivery = await crud.get_delivery_by_order_id(db, order['id_order'])
+                if not db_delivery:
+                    logger.error(f"Delivery for order_id {order['id_order']} not found.")
+                    return
+
+                # Check and update the delivery status
+                if db_delivery.status != models.Delivery.STATUS_CANCELED:
+                    logger.debug(f"Updating delivery status to DELIVERING for order_id: {order['id_order']}")
+                    db_delivery = await crud.update_delivery(db, order['id_order'], models.Delivery.STATUS_DELIVERING)
+                    if db_delivery:
+                        logger.debug(f"Delivery status updated: {db_delivery.status}")
+                        # Schedule the send_product task
+                        asyncio.create_task(send_product(db_delivery))
+                    else:
+                        logger.error(f"Failed to update delivery for order_id: {order['id_order']}")
+                else:
+                    logger.info(f"Delivery for order_id {order['id_order']} is already canceled.")
+        except Exception as e:
+            logger.error(f"Error in on_produced_message: {e}")
+
+
 
 async def on_create_message(message):
     async with message.process():
@@ -191,7 +212,7 @@ async def subscribe_produced():
 
 
 async def send_product(delivery):
-    logger.debug("HE ENTRADO")
+    logger.debug("Inicio de send_product")
     data = {
         "id_order": delivery.order_id,
         "id_client": delivery.id_client
@@ -202,17 +223,20 @@ async def send_product(delivery):
     routing_key = "orders.delivering"
     try:
         await publish_event(message_body, routing_key)
+        logger.debug(f"Mensaje publicado en {routing_key}: {message_body}")
     except Exception as e:
         logger.error(f"Error al publicar el evento 'in process': {e}")
-        return  # O maneja el error según sea necesario
+        return
 
     # Espera de 10 segundos
     await asyncio.sleep(10)
+    logger.debug("Espera completada. Actualizando estado del delivery.")
 
-    # Actualiza el estado del delivery en la base de datos
-    async with dependencies.get_db() as db:
-        try:
-            db_delivery = await crud.get_delivery(db, delivery.id)
+    # Consume the generator from `get_db`
+    try:
+        async for db in dependencies.get_db():
+            logger.debug("Sesión de base de datos creada.")
+            db_delivery = await crud.get_delivery_by_order(db, delivery.order_id)
             if db_delivery is None:
                 logger.error(f"Delivery con ID {delivery.id} no encontrado")
                 return
@@ -222,16 +246,20 @@ async def send_product(delivery):
                 logger.error(f"No se pudo actualizar el estado del delivery para ID {delivery.id}")
                 return
 
-            logger.debug(f"El delivery de la base de datos es: {db_delivery.id} con estado {db_delivery.status}")
-        except Exception as e:
-            logger.error(f"Error al obtener o actualizar el delivery: {e}")
-            return
+            logger.debug(f"Estado del delivery actualizado: {db_delivery.status}")
+            break  # Ensure the loop exits after consuming the generator
+    except Exception as e:
+        logger.error(f"Error al obtener o actualizar el delivery: {e}")
+        return
 
+    # Publica el evento final con el estado "delivered"
     routing_key = "orders.delivered"
-    await publish_event(message_body, routing_key)
+    try:
+        await publish_event(message_body, routing_key)
+        logger.debug(f"Mensaje publicado en {routing_key}: {message_body}")
+    except Exception as e:
+        logger.error(f"Error al publicar el evento 'delivered': {e}")
 
-    # Cierra la sesión de la base de datos
-    await db.close()
 
 
 async def on_message_order_cancel_delivery_pending(message):

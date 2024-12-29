@@ -144,15 +144,16 @@ async def get_delivery_by_order(db: AsyncSession, order_id: int):
 
 
 async def update_delivery(db: AsyncSession, order_id: int, new_status: str):
-    """Update the delivery status."""
     stmt = (
         update(models.Delivery)
         .where(models.Delivery.order_id == order_id)
         .values(status=new_status)
         .execution_options(synchronize_session="fetch")
     )
-    await db.execute(stmt)  # Executes within the caller's transaction
+    await db.execute(stmt)
+    await db.commit()  # Asegúrate de confirmar la transacción
     return await get_delivery_by_order_id(db, order_id)
+
 
 
 

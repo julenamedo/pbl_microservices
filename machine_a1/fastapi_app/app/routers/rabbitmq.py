@@ -61,19 +61,29 @@ async def subscribe_channel():
         logger.error(f"Error durante la suscripción: {e}")
         raise  # Propaga el error para manejo en niveles superiores
 
+
 async def on_message(message):
     async with message.process():
-        piece = json.loads(message.body)
-        await crud.set_status_of_machine("Machine Status: Producing")
-        await asyncio.sleep(3)
-        logger.info("Piece A produced: " + piece['piece_id'])
-        await crud.set_status_of_machine("Machine Status: Idle")
-        data = {
-            "id_piece": piece['piece_id']
-        }
-        message_body = json.dumps(data)
-        routing_key = "piece.produced"
-        await publish(message_body, routing_key)
+        try:
+            piece = json.loads(message.body)
+            logger.debug(f"Received piece request: {piece}")
+
+            await crud.set_status_of_machine("Machine Status: Producing")
+            await asyncio.sleep(3)
+
+            logger.info(f"Piece A produced: {piece['id_piece']}")
+            await crud.set_status_of_machine("Machine Status: Idle")
+
+            data = {"id_piece": piece['id_piece']}
+            message_body = json.dumps(data)
+            routing_key = "piece.produced"
+
+            logger.debug(f"Publishing message: {message_body} to routing key: {routing_key}")
+            await publish(message_body, routing_key)
+            logger.debug("Message published successfully.")
+        except Exception as e:
+            logger.error(f"Error in on_message: {e}")
+
 
 
 async def subscribe():

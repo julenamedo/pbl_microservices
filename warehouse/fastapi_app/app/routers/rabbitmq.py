@@ -88,7 +88,6 @@ async def on_piece_order(message):
                 return
 
             db = SessionLocal()
-            enough_pieces = True
 
             # Procesar piezas de tipo A
             for _ in range(0, pieces_ordered['number_of_pieces_a']):
@@ -113,7 +112,6 @@ async def on_piece_order(message):
                     except Exception as e:
                         logger.error(f"Error al crear una nueva pieza A: {e}")
                         return
-                    enough_pieces = False
 
             # Procesar piezas de tipo B
             for _ in range(0, pieces_ordered['number_of_pieces_b']):
@@ -138,22 +136,19 @@ async def on_piece_order(message):
                     except Exception as e:
                         logger.error(f"Error al crear una nueva pieza B: {e}")
                         return
-                    enough_pieces = False
 
-            # Publicar en RabbitMQ si hay suficientes piezas
-            if enough_pieces:
+            try:
                 data = {
-                    "id_order": db_piece.id_order,
+                    "id_order": pieces_ordered['id_order'],
                     "id_client": pieces_ordered['id_client']
                 }
-                try:
-                    message_body = json.dumps(data)
-                    routing_key = "orders.produced"
-                    logger.debug(f"Publicando mensaje: {message_body} en routing_key: {routing_key}")
-                    await publish(message_body, routing_key)
-                except Exception as e:
-                    logger.error(f"Error al publicar el mensaje: {e}")
-                    return
+                message_body = json.dumps(data)
+                routing_key = "orders.produced"
+                logger.debug(f"Publicando mensaje: {message_body} en routing_key: {routing_key}")
+                await publish(message_body, routing_key)
+            except Exception as e:
+                logger.error(f"Error al publicar el mensaje: {e}")
+                return
 
         except Exception as e:
             logger.error(f"Error general en on_piece_order: {e}")
