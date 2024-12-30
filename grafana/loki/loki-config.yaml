@@ -1,0 +1,41 @@
+auth_enabled: false
+
+server:
+  http_listen_port: 3100
+  grpc_listen_port: 9095
+
+ingester:
+  wal:
+    dir: /tmp/loki/wal  # Specify the WAL directory
+  lifecycler:
+    ring:
+      kvstore:
+        store: inmemory
+      replication_factor: 1
+  chunk_idle_period: 5m
+  max_chunk_age: 1h
+
+schema_config:
+  configs:
+    - from: 2020-10-24
+      store: tsdb  # Use TSDB storage
+      object_store: filesystem  # Keep the filesystem object store
+      schema: v13  # Update to schema v13
+      index:
+        prefix: loki_index_
+        period: 24h
+
+storage_config:
+  tsdb:
+    path: /tmp/loki/tsdb  # Use TSDB directory under storage_config
+  filesystem:
+    directory: /tmp/loki/chunks  # Directory for chunk storage
+
+limits_config:
+  max_streams_per_user: 1000
+  max_global_streams_per_user: 10000
+  allow_structured_metadata: true  # Enable structured metadata
+
+table_manager:
+  retention_deletes_enabled: false
+  retention_period: 0s

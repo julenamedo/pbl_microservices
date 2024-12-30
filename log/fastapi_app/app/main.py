@@ -5,7 +5,9 @@ import os
 import asyncio
 import aio_pika
 from contextlib import asynccontextmanager
-
+from loki_logger_handler.loki_logger_handler import LokiLoggerHandler
+from loki_logger_handler.formatters.loguru_formatter import LoguruFormatter
+from loguru import logger
 from .consulService.BLConsul import register_consul_service, unregister_consul_service
 
 from fastapi import FastAPI
@@ -18,9 +20,16 @@ from global_variables.global_variables import update_system_resources_periodical
 # Configure logging ################################################################################
 print("Name: ", __name__)
 logging.config.fileConfig(os.path.join(os.path.dirname(__file__), 'logging.ini'))
-logger = logging.getLogger(__name__)
+# logger = logging.getLogger(__name__)
+# Configura Loguru para Loki
 
 
+custom_handler = LokiLoggerHandler(
+    url="http://loki:3100/loki/api/v1/push",  # Dirección de Loki
+    labels={"job": "log-service"},
+)
+# Añade el handler de Loki a Loguru
+logger.add(custom_handler, level="DEBUG")
 
 # OpenAPI Documentation ############################################################################
 APP_VERSION = os.getenv("APP_VERSION", "2.0.0")

@@ -1,6 +1,35 @@
 version: '3.8'
 
 services:
+  # Servicios para grafana
+  grafana:
+    image: grafana/grafana
+    container_name: grafana
+    ports:
+      - '3000:3000'
+    environment:
+      - GF_SERVER_PROTOCOL=https
+      - GF_SERVER_CERT_FILE=/keys/server_cert.pem
+      - GF_SERVER_CERT_KEY=/keys/server_key.pem
+    volumes:
+      - ./keys:/keys
+      - ./grafana_data:/var/lib/grafana
+    depends_on:
+      - loki
+    restart: always
+
+  loki:
+    image: grafana/loki:latest
+    container_name: loki
+    ports:
+      - "3100:3100"
+    volumes:
+      - ./grafana/loki/loki-config.yaml:/etc/loki-local-config.yaml
+      - ./loki_data:/tmp/loki
+      - ./keys:/keys  # Mount all Loki data directories
+    restart: always
+
+
   # Servicio Consul
   consul:
     image: hashicorp/consul:1.16.0
@@ -273,6 +302,8 @@ services:
       - ./haproxy.cfg/503_error.html:/usr/local/etc/haproxy/503_error.html
       - './keys:/keys'
     depends_on:
+      - grafana
+      - loki
       - machine_a1
       - machine_a2
       - machine_b1
