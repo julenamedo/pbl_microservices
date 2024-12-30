@@ -171,6 +171,43 @@ async def subscribe_piece_order():
             await on_piece_order(message)
 
 
+
+async def on_check_warehouse_order_cancel_message(message):
+    async with message.process():
+        order_canceled = json.loads(message.body)
+        status_cancel = True
+        try:
+            db = SessionLocal()
+            db_pieces = await crud.get_order_pieces(db, order_canceled['order_id'])
+            await db.close()
+            for piece in db_pieces:
+                db = SessionLocal()
+                db_piece = await crud.change_piece_order_id(db, piece.id_piece, None)
+                await db.close()
+        except Exception as e:
+            status_cancel = False
+        data = {
+            "order_id": order_canceled['order_id'],
+            "id_client": order_canceled['id_client'],
+            "status": status_cancel
+        }
+        message_body = json.dumps(data)
+        routing_key = "warehouse.checked_cancel"
+        await publish_response(message_body, routing_key)
+
+async def subscribe_check_warehouse_order_cancel():
+    # Create a queue
+    queue_name = "warehouse.check_cancel"
+    queue = await channel.declare_queue(name=queue_name, exclusive=False)
+    # Bind the queue to the exchange
+    routing_key = "warehouse.check_cancel"
+    await queue.bind(exchange=exchange_commands_name, routing_key=routing_key)
+    # Set up a message consumer
+    async with queue.iterator() as queue_iter:
+        async for message in queue_iter:
+            await on_check_warehouse_order_cancel_message(message)
+
+
 async def on_piece_message(message):
     async with message.process():
         piece_recieve = json.loads(message.body)

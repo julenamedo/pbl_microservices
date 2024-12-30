@@ -211,6 +211,36 @@ async def subscribe_produced():
             await on_produced_message(message)
 
 
+
+async def on_message_revert_order_cancel(message):
+    async with message.process():
+        order = json.loads(message.body)
+        db = SessionLocal()
+        delivery = await crud.get_delivery_by_order(db, order['order_id'])
+        delivery = await crud.update_delivery(db, order['order_id'], models.Delivery.STATUS_CREATED)
+        await db.close()
+        data = {
+            "order_id": order['order_id']
+        }
+        message_body = json.dumps(data)
+        routing_key = "delivery.reverted_cancel"
+        await publish_response(message_body, routing_key)
+
+
+async def subscribe_revert_order_cancel():
+    # Create queue
+    queue_name = "delivery.revert_cancel"
+    queue = await channel.declare_queue(name=queue_name, exclusive=False)
+    # Bind the queue to the exchange
+    routing_key = "delivery.revert_cancel"
+    await queue.bind(exchange=exchange_commands_name, routing_key=routing_key)
+    # Set up a message consumer
+    async with queue.iterator() as queue_iter:
+        async for message in queue_iter:
+            await on_message_revert_order_cancel(message)
+
+
+
 async def send_product(delivery):
     logger.debug("Inicio de send_product")
     data = {

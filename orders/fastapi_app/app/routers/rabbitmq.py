@@ -154,7 +154,7 @@ async def on_payment_checked_order_cancel_message(message):
             db_order = await crud.update_order_status(db, payment['order_id'], models.Order.STATUS_ORDER_CANCEL_WAREHOUSE_PENDING)
             await crud.create_sagas_history(db_saga, payment['order_id'], db_order.status_)
             data = {
-                "id_order": db_order.id,
+                "order_id": db_order.id,
                 "id_client": db_order.id_client
             }
             message_body = json.dumps(data)
@@ -183,6 +183,99 @@ async def subscribe_payment_checked_order_cancel():
     async with queue.iterator() as queue_iter:
         async for message in queue_iter:
             await on_payment_checked_order_cancel_message(message)
+
+
+async def on_delivery_reverted_order_cancel_message(message):
+    async with message.process():
+        delivery = json.loads(message.body)
+        db = SessionLocal()
+        db_saga = SessionLocal()
+        db_order = await crud.update_order_status(db, delivery['order_id'], models.Order.STATUS_QUEUED)
+        await crud.create_sagas_history(db_saga, delivery['order_id'], db_order.status)
+        await db.close()
+        await db_saga.close()
+
+
+async def subscribe_delivery_reverted_order_cancel():
+    # Create a queue
+    queue_name = "delivery.reverted_cancel"
+    queue = await channel.declare_queue(name=queue_name, exclusive=False)
+    # Bind the queue to the exchange
+    routing_key = "delivery.reverted_cancel"
+    await queue.bind(exchange=exchange_responses_name, routing_key=routing_key)
+    # Set up a message consumer
+    async with queue.iterator() as queue_iter:
+        async for message in queue_iter:
+            await on_delivery_reverted_order_cancel_message(message)
+
+
+
+async def on_warehouse_checked_order_cancel_message(message):
+    async with message.process():
+        warehouse = json.loads(message.body)
+        db = SessionLocal()
+        db_saga = SessionLocal()
+        if warehouse['status']:
+            db_order = await crud.update_order_status(db, warehouse['order_id'], models.Order.STATUS_CANCELED)
+            await crud.create_sagas_history(db_saga, warehouse['order_id'], db_order.status)
+        else:
+            db_order = await crud.update_order_status(db, warehouse['order_id'], models.Order.STATUS_ORDER_CANCEL_PAYMENT_RECHARGING)
+            await crud.create_sagas_history(db_saga, warehouse['order_id'], db_order.status)
+            data = {
+                "order_id": db_order.id,
+                "id_client": db_order.id_client
+            }
+            message_body = json.dumps(data)
+            routing_key = "payment.revert_cancel"
+            await publish_command(message_body, routing_key)
+        await db.close()
+        await db_saga.close()
+
+
+async def subscribe_warehouse_checked_order_cancel():
+    # Create a queue
+    queue_name = "warehouse.checked_cancel"
+    queue = await channel.declare_queue(name=queue_name, exclusive=False)
+    # Bind the queue to the exchange
+    routing_key = "warehouse.checked_cancel"
+    await queue.bind(exchange=exchange_responses_name, routing_key=routing_key)
+    # Set up a message consumer
+    async with queue.iterator() as queue_iter:
+        async for message in queue_iter:
+            await on_warehouse_checked_order_cancel_message(message)
+
+
+
+async def on_payment_reverted_order_cancel_message(message):
+    async with message.process():
+        payment = json.loads(message.body)
+        db = SessionLocal()
+        db_saga = SessionLocal()
+        db_order = await crud.update_order_status(db, payment['order_id'], models.Order.STATUS_ORDER_CANCEL_DELIVERY_REDELIVERING)
+        await crud.create_sagas_history(db_saga, payment['order_id'], db_order.status)
+        data = {
+            "order_id": db_order.id
+        }
+        message_body = json.dumps(data)
+        routing_key = "delivery.revert_cancel"
+        await publish_command(message_body, routing_key)
+        await db.close()
+        await db_saga.close()
+
+
+async def subscribe_payment_reverted_order_cancel():
+    # Create a queue
+    queue_name = "payment.reverted_cancel"
+    queue = await channel.declare_queue(name=queue_name, exclusive=False)
+    # Bind the queue to the exchange
+    routing_key = "payment.reverted_cancel"
+    await queue.bind(exchange=exchange_responses_name, routing_key=routing_key)
+    # Set up a message consumer
+    async with queue.iterator() as queue_iter:
+        async for message in queue_iter:
+            await on_payment_reverted_order_cancel_message(message)
+
+
 
 
 async def on_delivering_message(message):

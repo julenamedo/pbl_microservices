@@ -71,6 +71,7 @@ async def startup_event():
         asyncio.create_task(rabbitmq.subscribe_piece_order())
         asyncio.create_task(rabbitmq.subscribe_pieces())
         asyncio.create_task(rabbitmq.subscribe_delivery_cancel())
+        asyncio.create_task(rabbitmq.subscribe_check_warehouse_order_cancel())
         asyncio.create_task(rabbitmq.subscribe_delivering())
         try:
             task = asyncio.create_task(update_system_resources_periodically(15))

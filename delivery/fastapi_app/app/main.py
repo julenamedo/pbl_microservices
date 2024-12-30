@@ -69,6 +69,7 @@ async def startup_event():
         logger.info("despues del subscribe")
         asyncio.create_task(rabbitmq.subscribe_delivery_cancel())
         asyncio.create_task(rabbitmq.subscribe_delivery_check())
+        asyncio.create_task(rabbitmq.subscribe_revert_order_cancel())
         asyncio.create_task(rabbitmq.subscribe_produced())
         asyncio.create_task(rabbitmq.subscribe_order_cancel_delivery_pending())
         asyncio.create_task(rabbitmq.subscribe_client_updated())

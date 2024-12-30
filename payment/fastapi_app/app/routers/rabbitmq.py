@@ -119,6 +119,36 @@ async def subscribe_payment_check_order_cancel():
         async for message in queue_iter:
             await on_message_payment_check_order_cancel(message)
 
+
+
+async def on_message_payment_revert_order_cancel(message):
+    async with message.process():
+        order_cancel = json.loads(message.body)
+        db = SessionLocal()
+        await crud.delete_recharge(db, order_cancel['id_client'])
+        await db.close()
+        data = {
+            "order_id": order_cancel['order_id'],
+            "id_client": order_cancel['id_client']
+        }
+        message_body = json.dumps(data)
+        routing_key = "payment.reverted_cancel"
+        await publish_response(message_body, routing_key)
+
+
+async def subscribe_payment_revert_order_cancel():
+    # Create queue
+    queue_name = "payment.revert_cancel"
+    queue = await channel.declare_queue(name=queue_name, exclusive=False)
+    # Bind the queue to the exchange
+    routing_key = "payment.revert_cancel"
+    await queue.bind(exchange=exchange_commands_name, routing_key=routing_key)
+    # Set up a message consumer
+    async with queue.iterator() as queue_iter:
+        async for message in queue_iter:
+            await on_message_payment_revert_order_cancel(message)
+
+
 async def publish_event(message_body, routing_key):
     # Publish the message to the exchange
     await exchange_events.publish(

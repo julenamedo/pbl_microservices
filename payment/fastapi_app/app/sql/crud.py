@@ -3,6 +3,7 @@
 import logging
 from datetime import datetime
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import and_
 from sqlalchemy.future import select
 from . import models
 
@@ -103,6 +104,21 @@ async def create_recharge(db: AsyncSession, payment):
     await db.commit()
     await db.refresh(db_payment)
     return db_payment
+
+
+
+async def delete_recharge(db: AsyncSession, id_client):
+    """Persist a new deposit into the database."""
+    stmt = select(models.Payment).where(
+        and_(
+            models.Payment.id_client == id_client,
+            models.Payment.balance > 0
+        )
+    )
+    payment = await get_element_statement_result(db, stmt)
+    await db.delete(payment)
+    await db.commit()
+
 
 async def get_piece_list(db: AsyncSession):
     """Load all the orders from the database."""
