@@ -15,7 +15,7 @@ ssl_context.check_hostname = False
 ssl_context.verify_mode = CERT_NONE
 
 INFLUXDB_URL = "https://influxdb:8086"
-INFLUXDB_TOKEN = "your-influxdb-token"
+INFLUXDB_TOKEN = "admin's Token"
 INFLUXDB_ORG = "your-org"
 INFLUXDB_BUCKET = "your-bucket"
 INFLUXDB_USERNAME = "admin"
@@ -28,6 +28,7 @@ influxdb_client = InfluxDBClient(
     username=INFLUXDB_USERNAME,
     password=INFLUXDB_PASSWORD,
     org=INFLUXDB_ORG,
+    ssl_ca_cert=CA_CERT_PATH,
     verify_ssl=False
 )
 

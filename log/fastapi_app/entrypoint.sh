@@ -1,26 +1,38 @@
 #!/bin/bash
 
-echo "Service: ${SERVICE_NAME}"
+echo "Service: ${SERVICE_NAME:-log-service}"
 IP=$(hostname -i)
 export IP
 echo "IP: ${IP}"
 
-# Function to handle termination signals and send it to hypercorn
+# Function to handle termination signals
 terminate() {
-  echo "Termination signal received, shutting down..."
-  kill -SIGTERM "$HYPERCORN_PID"
-  wait "$HYPERCORN_PID"
-  echo "Hypercorn has been terminated"
+    echo "Termination signal received, shutting down..."
+    kill -SIGTERM "$UVICORN_PID"
+    wait "$UVICORN_PID"
+    echo "Uvicorn has been terminated"
 }
 
+# Trap signals
 trap terminate SIGTERM SIGINT
 
-hypercorn \
-  --bind 0.0.0.0:8000 \
-  app.main:app &
+# Check for SSL certificate and key files
+if [[ ! -f /keys/priv.pem || ! -f /keys/cert.pem ]]; then
+    echo "SSL certificate or key file not found. Exiting."
+    exit 1
+fi
 
-# Capture the PID of the Hypercorn process
-HYPERCORN_PID=$!
+# Start Uvicorn server with SSL
+echo "Starting Uvicorn server with SSL..."
+uvicorn app.main:app \
+  --host 0.0.0.0 \
+  --port 8000 \
+  --reload \
+  --ssl-keyfile /keys/priv.pem \
+  --ssl-certfile /keys/cert.pem &
 
-# Wait for the Hypercorn process to finish
-wait "$HYPERCORN_PID"
+# Capture the PID of the Uvicorn process
+UVICORN_PID=$!
+
+# Wait for Uvicorn to terminate
+wait "$UVICORN_PID"

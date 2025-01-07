@@ -264,13 +264,13 @@ services:
     environment:
       PYTHONUNBUFFERED: 1
       INFLUXDB_URL: "https://influxdb:8086"
-      INFLUXDB_TOKEN: "your-influxdb-token"
+      INFLUXDB_TOKEN: "admin's Token"
       INFLUXDB_ORG: "your-org"
       INFLUXDB_BUCKET: "your-bucket"
       SQLALCHEMY_DATABASE_URL: ${SQLALCHEMY_SQLITE_DATABASE_URI}
       CONSUL_HOST: consul
     restart: on-failure
-    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload --ssl-keyfile /keys/priv.pem --ssl-certfile /keys/cert.pem
+    # command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --ssl-keyfile /keys/server_key.pem --ssl-certfile /keys/server_cert.pem
 
   influxdb:
     image: influxdb
@@ -285,7 +285,7 @@ services:
       DOCKER_INFLUXDB_INIT_BUCKET: your-bucket
     volumes:
       - ./influxdb_data:/var/lib/influxdb2
-      - ./keys:/keys  # Mount your certificates
+      - ./keys:/keys
     command: >
       influxd
       --tls-cert=/keys/server_cert.pem
