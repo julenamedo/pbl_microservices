@@ -1,0 +1,33 @@
+[ req ]
+default_bits        = 2048
+prompt              = no
+default_md          = sha256
+distinguished_name  = dn
+req_extensions      = req_ext
+
+[ dn ]
+C                   = ES
+ST                  = Mondragon
+L                   = Arrasate
+O                   = Unibertsitatea
+CN                  = CA
+
+[ req_ext ]
+subjectAltName = @alt_names
+
+[ alt_names ]
+DNS.1 = grafana
+DNS.2 = loki
+DNS.3 = rabbitmq
+DNS.4 = influxdb
+DNS.5 = haproxy
+DNS.6 = machine_a1
+DNS.7 = machine_a2
+DNS.8 = machine_b1
+DNS.9 = machine_b2
+DNS.10 = warehouse
+DNS.11 = orders
+DNS.12 = delivery
+DNS.13 = client
+DNS.14 = payment
+DNS.15 = log

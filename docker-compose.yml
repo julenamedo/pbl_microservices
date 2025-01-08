@@ -1,6 +1,35 @@
 version: '3.8'
 
 services:
+  # Servicios para grafana
+  grafana:
+    image: grafana/grafana
+    container_name: grafana
+    ports:
+      - '3000:3000'
+    environment:
+      - GF_SERVER_PROTOCOL=https
+      - GF_SERVER_CERT_FILE=/keys/server_cert.pem
+      - GF_SERVER_CERT_KEY=/keys/server_key.pem
+    volumes:
+      - ./keys:/keys
+      - ./grafana_data:/var/lib/grafana
+    depends_on:
+      - loki
+    restart: always
+
+  loki:
+    image: grafana/loki:latest
+    container_name: loki
+    ports:
+      - "3100:3100"
+    volumes:
+      - ./grafana/loki/loki-config.yaml:/etc/loki-local-config.yaml
+      - ./loki_data:/tmp/loki
+      - ./keys:/keys  # Mount all Loki data directories
+    restart: always
+
+
   # Servicio Consul
   consul:
     image: hashicorp/consul:1.16.0
@@ -235,13 +264,13 @@ services:
     environment:
       PYTHONUNBUFFERED: 1
       INFLUXDB_URL: "https://influxdb:8086"
-      INFLUXDB_TOKEN: "your-influxdb-token"
+      INFLUXDB_TOKEN: "admin's Token"
       INFLUXDB_ORG: "your-org"
       INFLUXDB_BUCKET: "your-bucket"
       SQLALCHEMY_DATABASE_URL: ${SQLALCHEMY_SQLITE_DATABASE_URI}
       CONSUL_HOST: consul
     restart: on-failure
-    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload --ssl-keyfile /keys/priv.pem --ssl-certfile /keys/cert.pem
+    # command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --ssl-keyfile /keys/server_key.pem --ssl-certfile /keys/server_cert.pem
 
   influxdb:
     image: influxdb
@@ -256,7 +285,7 @@ services:
       DOCKER_INFLUXDB_INIT_BUCKET: your-bucket
     volumes:
       - ./influxdb_data:/var/lib/influxdb2
-      - ./keys:/keys  # Mount your certificates
+      - ./keys:/keys
     command: >
       influxd
       --tls-cert=/keys/server_cert.pem
@@ -273,6 +302,8 @@ services:
       - ./haproxy.cfg/503_error.html:/usr/local/etc/haproxy/503_error.html
       - './keys:/keys'
     depends_on:
+      - grafana
+      - loki
       - machine_a1
       - machine_a2
       - machine_b1

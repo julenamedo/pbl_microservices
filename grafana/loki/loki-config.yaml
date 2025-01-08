@@ -1,0 +1,52 @@
+auth_enabled: false
+
+server:
+  http_listen_port: 3100
+  grpc_listen_port: 9095
+
+ingester:
+  wal:
+    dir: /tmp/loki/wal
+  lifecycler:
+    ring:
+      kvstore:
+        store: consul
+        consul:
+          host: consul:8500
+      replication_factor: 1
+    zone: default
+  chunk_idle_period: 5m
+  max_chunk_age: 1h
+
+schema_config:
+  configs:
+    - from: 2020-10-24
+      store: tsdb
+      object_store: filesystem
+      schema: v13
+      index:
+        prefix: loki_index_
+        period: 24h
+
+storage_config:
+  tsdb:
+    path: /tmp/loki/tsdb
+  filesystem:
+    directory: /tmp/loki/chunks
+
+limits_config:
+  max_streams_per_user: 1000
+  reject_old_samples: false
+  allow_stream_label_keys:
+    - job
+
+table_manager:
+  retention_deletes_enabled: false
+  retention_period: 0s
+
+distributor:
+  ring:
+    kvstore:
+      store: consul
+      consul:
+        host: consul:8500

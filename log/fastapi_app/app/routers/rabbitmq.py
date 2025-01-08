@@ -1,6 +1,8 @@
 import aio_pika
 import logging
 import json
+import time
+import requests
 
 import ssl
 from global_variables.global_variables import update_system_resources_periodically, set_rabbitmq_status, get_rabbitmq_status
@@ -32,6 +34,9 @@ exchange_commands_name = 'commands'
 exchange_name = 'events'
 exchange_responses_name = 'responses'
 exchange_logs_name = 'log'
+LOKI_URL = "http://loki:3100/loki/api/v1/push"  # Replace with your Loki URL
+LOKI_LABELS = {"job": "log-service", "environment": "production"}
+
 
 async def subscribe_channel():
 
@@ -98,15 +103,12 @@ async def on_log_message(message):
     async with message.process():
         try:
             # Log básico al recibir un mensaje
-            logger.info(f" [x] Received message from {exchange_name}: {message.body.decode()}")
-            print(f" [x] Received message from {exchange_name}: {message.body.decode()}")
-
-            # Extraer datos del mensaje
-            routing_key = message.routing_key
             data = message.body.decode()
-            log_level = "INFO"  # Puedes ajustar dinámicamente el nivel de log según el caso
+            routing_key = message.routing_key
+            log_level = "INFO"
+            logger.info(f" [x] Received message from {exchange_name}: {data}")
 
-            # Crear un punto de datos para InfluxDB
+            # Create InfluxDB Point
             point = Point("logs") \
                 .tag("exchange", exchange_name) \
                 .tag("routing_key", routing_key) \
@@ -114,18 +116,34 @@ async def on_log_message(message):
                 .field("message", data) \
                 .time(datetime.utcnow().isoformat())
 
-            # Escribir en InfluxDB
+            # Write to InfluxDB
             write_api.write(bucket=INFLUXDB_BUCKET, org=INFLUXDB_ORG, record=point)
-
             print(f"Log saved to InfluxDB: {data}")
 
+            # Prepare and send log to Loki
+            payload = {
+                "streams": [
+                    {
+                        "stream": LOKI_LABELS,
+                        "values": [
+                            [str(int(time.time() * 1e9)), data]  # Timestamp in nanoseconds
+                        ]
+                    }
+                ]
+            }
+            response = requests.post(LOKI_URL, json=payload)
+            if response.status_code != 204:
+                logger.error(f"Failed to send log to Loki: {response.status_code}, {response.text}")
+            else:
+                print(f"Log sent to Loki: {data}")
+
         except Exception as e:
-            # Capturar excepciones y registrar como ERROR
+            # Handle exceptions and log error
             exception_message = traceback.format_exception(None, e, e.__traceback__)
             logger.error(f" [!] Error processing message: {exception_message}")
             print(f" [!] Error processing message: {exception_message}")
 
-            # Crear un log para la excepción
+            # Create and log error in InfluxDB
             point = Point("logs") \
                 .tag("exchange", exchange_name) \
                 .tag("routing_key", "error") \
@@ -133,11 +151,25 @@ async def on_log_message(message):
                 .field("message", "Error processing message") \
                 .field("exception", "\n".join(exception_message)) \
                 .time(datetime.utcnow().isoformat())
-
-            # Escribir el error en InfluxDB
             write_api.write(bucket=INFLUXDB_BUCKET, org=INFLUXDB_ORG, record=point)
 
-            print("Error log saved to InfluxDB")
+            # Log error to Loki
+            payload = {
+                "streams": [
+                    {
+                        "stream": {**LOKI_LABELS, "log_level": "ERROR"},
+                        "values": [
+                            [str(int(time.time() * 1e9)), "Error processing message: " + "\n".join(exception_message)]
+                        ]
+                    }
+                ]
+            }
+            try:
+                response = requests.post(LOKI_URL, json=payload)
+                if response.status_code != 204:
+                    logger.error(f"Failed to send error log to Loki: {response.status_code}, {response.text}")
+            except Exception as loki_exception:
+                logger.error(f"Error sending error log to Loki: {loki_exception}")
 
 
 async def subscribe_events_logs():
@@ -155,43 +187,71 @@ async def subscribe_events_logs():
 async def on_command_log_message(message):
     async with message.process():
         try:
-            # Extraer datos del mensaje
-            routing_key = message.routing_key
             data = message.body.decode()
-            log_level = "INFO"  # Establece un nivel de log, puedes ajustarlo según el caso
+            routing_key = message.routing_key
+            log_level = "INFO"
+            logger.info(f"[x] Received command log: {data}")
 
-            # Crear un punto de datos para InfluxDB
+            # Write to InfluxDB
             point = Point("logs") \
                 .tag("exchange", exchange_commands_name) \
                 .tag("routing_key", routing_key) \
                 .tag("log_level", log_level) \
                 .field("message", data) \
                 .time(datetime.utcnow().isoformat())
-
-            # Escribir en InfluxDB
             write_api.write(bucket=INFLUXDB_BUCKET, org=INFLUXDB_ORG, record=point)
-
             print(f"Command log saved to InfluxDB: {data}")
 
-        except Exception as e:
-            # Manejo de excepciones y registro de error
-            exception_message = traceback.format_exception(None, e, e.__traceback__)
-            logger.error(f" [!] Error processing command log message: {exception_message}")
-            print(f" [!] Error processing command log message: {exception_message}")
+            # Send to Loki
+            payload = {
+                "streams": [
+                    {
+                        "stream": LOKI_LABELS,
+                        "values": [
+                            [str(int(time.time() * 1e9)), data]
+                        ]
+                    }
+                ]
+            }
+            response = requests.post(LOKI_URL, json=payload)
+            if response.status_code != 204:
+                logger.error(f"Failed to send command log to Loki: {response.status_code}, {response.text}")
+            else:
+                print(f"Command log sent to Loki: {data}")
 
-            # Crear un log para la excepción
+        except Exception as e:
+            # Handle exceptions
+            exception_message = traceback.format_exception(None, e, e.__traceback__)
+            logger.error(f"[!] Error processing command log: {exception_message}")
+            print(f"[!] Error processing command log: {exception_message}")
+
+            # Write error to InfluxDB
             point = Point("logs") \
                 .tag("exchange", exchange_commands_name) \
                 .tag("routing_key", "error") \
                 .tag("log_level", "ERROR") \
-                .field("message", "Error processing command log message") \
+                .field("message", "Error processing command log") \
                 .field("exception", "\n".join(exception_message)) \
                 .time(datetime.utcnow().isoformat())
-
-            # Escribir el error en InfluxDB
             write_api.write(bucket=INFLUXDB_BUCKET, org=INFLUXDB_ORG, record=point)
 
-            print("Error log saved to InfluxDB")
+            # Send error log to Loki
+            payload = {
+                "streams": [
+                    {
+                        "stream": {**LOKI_LABELS, "log_level": "ERROR"},
+                        "values": [
+                            [str(int(time.time() * 1e9)), "Error processing command log: " + "\n".join(exception_message)]
+                        ]
+                    }
+                ]
+            }
+            try:
+                response = requests.post(LOKI_URL, json=payload)
+                if response.status_code != 204:
+                    logger.error(f"Failed to send error log to Loki: {response.status_code}, {response.text}")
+            except Exception as loki_exception:
+                logger.error(f"Error sending error log to Loki: {loki_exception}")
 
 
 async def subscribe_commands_logs():
@@ -210,44 +270,71 @@ async def subscribe_commands_logs():
 async def on_response_log_message(message):
     async with message.process():
         try:
-
-            # Extraer información del mensaje
-            routing_key = message.routing_key
             data = message.body.decode()
-            log_level = "INFO"  # Nivel de log predeterminado
+            routing_key = message.routing_key
+            log_level = "INFO"
+            logger.info(f"[x] Received response log: {data}")
 
-            # Crear un punto para InfluxDB
+            # Write to InfluxDB
             point = Point("logs") \
                 .tag("exchange", exchange_responses_name) \
                 .tag("routing_key", routing_key) \
                 .tag("log_level", log_level) \
                 .field("message", data) \
                 .time(datetime.utcnow().isoformat())
-
-            # Escribir el log en InfluxDB
             write_api.write(bucket=INFLUXDB_BUCKET, org=INFLUXDB_ORG, record=point)
-
             print(f"Response log saved to InfluxDB: {data}")
 
-        except Exception as e:
-            # Manejo de excepciones
-            exception_message = traceback.format_exception(None, e, e.__traceback__)
-            logger.error(f" [!] Error processing response log message: {exception_message}")
-            print(f" [!] Error processing response log message: {exception_message}")
+            # Send to Loki
+            payload = {
+                "streams": [
+                    {
+                        "stream": LOKI_LABELS,
+                        "values": [
+                            [str(int(time.time() * 1e9)), data]
+                        ]
+                    }
+                ]
+            }
+            response = requests.post(LOKI_URL, json=payload)
+            if response.status_code != 204:
+                logger.error(f"Failed to send response log to Loki: {response.status_code}, {response.text}")
+            else:
+                print(f"Response log sent to Loki: {data}")
 
-            # Crear un punto de log para la excepción
+        except Exception as e:
+            # Handle exceptions
+            exception_message = traceback.format_exception(None, e, e.__traceback__)
+            logger.error(f"[!] Error processing response log: {exception_message}")
+            print(f"[!] Error processing response log: {exception_message}")
+
+            # Write error to InfluxDB
             point = Point("logs") \
                 .tag("exchange", exchange_responses_name) \
                 .tag("routing_key", "error") \
                 .tag("log_level", "ERROR") \
-                .field("message", "Error processing response log message") \
+                .field("message", "Error processing response log") \
                 .field("exception", "\n".join(exception_message)) \
                 .time(datetime.utcnow().isoformat())
-
-            # Escribir el log de error en InfluxDB
             write_api.write(bucket=INFLUXDB_BUCKET, org=INFLUXDB_ORG, record=point)
 
-            print("Error log saved to InfluxDB")
+            # Send error log to Loki
+            payload = {
+                "streams": [
+                    {
+                        "stream": {**LOKI_LABELS, "log_level": "ERROR"},
+                        "values": [
+                            [str(int(time.time() * 1e9)), "Error processing response log: " + "\n".join(exception_message)]
+                        ]
+                    }
+                ]
+            }
+            try:
+                response = requests.post(LOKI_URL, json=payload)
+                if response.status_code != 204:
+                    logger.error(f"Failed to send error log to Loki: {response.status_code}, {response.text}")
+            except Exception as loki_exception:
+                logger.error(f"Error sending error log to Loki: {loki_exception}")
 
 
 async def subscribe_responses_logs():
@@ -266,43 +353,71 @@ async def subscribe_responses_logs():
 async def on_log_log_message(message):
     async with message.process():
         try:
-            # Extraer información del mensaje
-            routing_key = message.routing_key
             data = message.body.decode()
-            log_level = "INFO"  # Nivel de log predeterminado
+            routing_key = message.routing_key
+            log_level = "INFO"
+            logger.info(f"[x] Received log: {data}")
 
-            # Crear un punto para InfluxDB
+            # Write to InfluxDB
             point = Point("logs") \
                 .tag("exchange", exchange_logs_name) \
                 .tag("routing_key", routing_key) \
                 .tag("log_level", log_level) \
                 .field("message", data) \
                 .time(datetime.utcnow().isoformat())
-
-            # Escribir el log en InfluxDB
             write_api.write(bucket=INFLUXDB_BUCKET, org=INFLUXDB_ORG, record=point)
+            print(f"Log saved to InfluxDB: {data}")
 
-            print(f"Response log saved to InfluxDB: {data}")
+            # Send to Loki
+            payload = {
+                "streams": [
+                    {
+                        "stream": LOKI_LABELS,
+                        "values": [
+                            [str(int(time.time() * 1e9)), data]
+                        ]
+                    }
+                ]
+            }
+            response = requests.post(LOKI_URL, json=payload)
+            if response.status_code != 204:
+                logger.error(f"Failed to send log to Loki: {response.status_code}, {response.text}")
+            else:
+                print(f"Log sent to Loki: {data}")
 
         except Exception as e:
-            # Manejo de excepciones
+            # Handle exceptions
             exception_message = traceback.format_exception(None, e, e.__traceback__)
-            logger.error(f" [!] Error processing response log message: {exception_message}")
-            print(f" [!] Error processing response log message: {exception_message}")
+            logger.error(f"[!] Error processing log: {exception_message}")
+            print(f"[!] Error processing log: {exception_message}")
 
-            # Crear un punto de log para la excepción
+            # Write error to InfluxDB
             point = Point("logs") \
                 .tag("exchange", exchange_logs_name) \
                 .tag("routing_key", "error") \
                 .tag("log_level", "ERROR") \
-                .field("message", "Error processing response log message") \
+                .field("message", "Error processing log") \
                 .field("exception", "\n".join(exception_message)) \
                 .time(datetime.utcnow().isoformat())
-
-            # Escribir el log de error en InfluxDB
             write_api.write(bucket=INFLUXDB_BUCKET, org=INFLUXDB_ORG, record=point)
 
-            print("Error log saved to InfluxDB")
+            # Send error log to Loki
+            payload = {
+                "streams": [
+                    {
+                        "stream": {**LOKI_LABELS, "log_level": "ERROR"},
+                        "values": [
+                            [str(int(time.time() * 1e9)), "Error processing log: " + "\n".join(exception_message)]
+                        ]
+                    }
+                ]
+            }
+            try:
+                response = requests.post(LOKI_URL, json=payload)
+                if response.status_code != 204:
+                    logger.error(f"Failed to send error log to Loki: {response.status_code}, {response.text}")
+            except Exception as loki_exception:
+                logger.error(f"Error sending error log to Loki: {loki_exception}")
 
 
 async def subscribe_logs_logs():

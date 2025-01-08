@@ -20,3 +20,5 @@ pika
 python-jose[cryptography]==3.3.0
 git+https://github.com/ErFosi/global_variables.git
 influxdb-client
+loguru
+loki-logger-handler
