@@ -26,7 +26,8 @@ services:
     volumes:
       - ./grafana/loki/loki-config.yaml:/etc/loki-local-config.yaml
       - ./loki_data:/tmp/loki
-      - ./keys:/keys  # Mount all Loki data directories
+      - ./keys:/keys
+    command: -config.file=/etc/loki-local-config.yaml -config.expand-env=true
     restart: always
 
 

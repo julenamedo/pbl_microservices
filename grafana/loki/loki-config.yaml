@@ -3,6 +3,10 @@ auth_enabled: false
 server:
   http_listen_port: 3100
   grpc_listen_port: 9095
+  http_listen_address: 0.0.0.0
+  http_tls_config:
+    cert_file: /keys/server_cert.pem
+    key_file: /keys/server_key.pem
 
 ingester:
   wal:
@@ -10,35 +14,32 @@ ingester:
   lifecycler:
     ring:
       kvstore:
-        store: consul
-        consul:
-          host: consul:8500
+        store: memberlist
       replication_factor: 1
-    zone: default
   chunk_idle_period: 5m
   max_chunk_age: 1h
 
 schema_config:
   configs:
     - from: 2020-10-24
-      store: tsdb
+      store: boltdb-shipper
       object_store: filesystem
-      schema: v13
+      schema: v11
       index:
         prefix: loki_index_
         period: 24h
 
 storage_config:
-  tsdb:
-    path: /tmp/loki/tsdb
+  boltdb_shipper:
+    active_index_directory: /tmp/loki/index
+    cache_location: /tmp/loki/boltdb-cache
   filesystem:
     directory: /tmp/loki/chunks
 
 limits_config:
   max_streams_per_user: 1000
   reject_old_samples: false
-  allow_stream_label_keys:
-    - job
+  allow_structured_metadata: false
 
 table_manager:
   retention_deletes_enabled: false
@@ -47,6 +48,12 @@ table_manager:
 distributor:
   ring:
     kvstore:
-      store: consul
-      consul:
-        host: consul:8500
+      store: memberlist
+
+memberlist:
+  join_members:
+    - "127.0.0.1"
+
+
+compactor:
+  working_directory: /tmp/loki/compactor
