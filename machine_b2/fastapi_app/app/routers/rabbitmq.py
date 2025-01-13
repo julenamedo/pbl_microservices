@@ -3,6 +3,7 @@ import aio_pika
 import json
 import logging
 from app.sql import crud
+from os import environ
 from app.routers import rabbitmq_publish_logs
 import ssl
 import logging
@@ -32,8 +33,8 @@ async def subscribe_channel():
 
         # Establece la conexión robusta con RabbitMQ
         connection = await aio_pika.connect_robust(
-            host='rabbitmq',
-            port=5671,  # Puerto seguro SSL
+            host=environ.get("RABBITMQ_HOST"),
+            port=int(environ.get("RABBITMQ_PORT_SERVICE")),  # Puerto seguro SSL
             virtualhost='/',
             login='guest',
             password='guest',

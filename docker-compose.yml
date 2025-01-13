@@ -39,11 +39,11 @@ services:
       - '8300:8300'
       - '8301:8301'
       - '8301:8301/udp'
-      - '8500:8500'     # Port For Consul Web UI
-      - '8600:8600'
+      - '8500:${CONSUL_PORT_WEB_UI}'     # Port For Consul Web UI
+      - '8600:${CONSUL_PORT_SERVICE}'
       - '8600:8600/udp'
     healthcheck:
-      test: [ "CMD", "curl", "-f", "http://localhost:8500/" ]
+      test: [ "CMD", "curl", "-f", "http://localhost:${CONSUL_PORT_WEB_UI}/" ]
       interval: 2s
       timeout: 2s
       retries: 10
@@ -53,9 +53,8 @@ services:
     image: rabbitmq:3-management   # Usa la versión con interfaz de administración
     container_name: rabbitmq
     ports:
-      - "5671:5671"                # Puerto para la comunicación entre los servicios
-      - "15672:15672"
-      - "15671:15671"
+      - "${RABBITMQ_PORT_WEB_UI}:${RABBITMQ_PORT_WEB_UI}"
+      - "${RABBITMQ_PORT_SERVICE}:${RABBITMQ_PORT_SERVICE}"
 
     volumes:
       - './keys:/etc/ssl/certs'   # Monta el directorio con los certificados
@@ -73,7 +72,7 @@ services:
   machine_a1:
     build: ./machine_a1/fastapi_app/.
     ports:
-      - '8001:8000'
+      - '${MACHINE_A1_AWS_PORT}:${UVICORN_PORT}'
     volumes:
       - './machine_a1/fastapi_app:/code'
       - './machine_a1/db_volume:/volume'
@@ -86,14 +85,18 @@ services:
     environment:
       PYTHONUNBUFFERED: 1
       SQLALCHEMY_DATABASE_URL: ${SQLALCHEMY_SQLITE_DATABASE_URI}
-      CONSUL_HOST: consul
+      # CONSUL_HOST: consul
+      CONSUL_HOST: ${CONSUL_RABBITMQ_HOST_AWS}
+      RABBITMQ_HOST: ${CONSUL_RABBITMQ_HOST_AWS}
+      UVICORN_PORT: ${UVICORN_PORT}
+      SERVICE_PORT: ${MACHINE_A1_AWS_PORT}
     restart: on-failure
-    #command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload --ssl-keyfile /keys/priv.pem --ssl-certfile /keys/cert.pem
+    #command: uvicorn app.main:app --host 0.0.0.0 --port ${UVICORN_PORT} --reload --ssl-keyfile /keys/priv.pem --ssl-certfile /keys/cert.pem
 
   machine_a2:
     build: ./machine_a2/fastapi_app/.
     ports:
-      - '8007:8000'
+      - '${MACHINE_A2_AWS_PORT}:${UVICORN_PORT}'
     volumes:
       - './machine_a2/fastapi_app:/code'
       - './machine_a2/db_volume:/volume'
@@ -106,13 +109,17 @@ services:
     environment:
       PYTHONUNBUFFERED: 1
       SQLALCHEMY_DATABASE_URL: ${SQLALCHEMY_SQLITE_DATABASE_URI}
-      CONSUL_HOST: consul
+      # CONSUL_HOST: consul
+      CONSUL_HOST: ${CONSUL_RABBITMQ_HOST_AWS}
+      RABBITMQ_HOST: ${CONSUL_RABBITMQ_HOST_AWS}
+      UVICORN_PORT: ${UVICORN_PORT}
+      SERVICE_PORT: ${MACHINE_A2_AWS_PORT}
     restart: on-failure
 
   machine_b1:
     build: ./machine_b1/fastapi_app/.
     ports:
-      - '8008:8000'
+      - '${MACHINE_B1_AWS_PORT}:${UVICORN_PORT}'
     volumes:
       - './machine_b1/fastapi_app:/code'
       - './machine_b1/db_volume:/volume'
@@ -125,13 +132,17 @@ services:
     environment:
       PYTHONUNBUFFERED: 1
       SQLALCHEMY_DATABASE_URL: ${SQLALCHEMY_SQLITE_DATABASE_URI}
-      CONSUL_HOST: consul
+      # CONSUL_HOST: consul
+      CONSUL_HOST: ${CONSUL_RABBITMQ_HOST_AWS}
+      RABBITMQ_HOST: ${CONSUL_RABBITMQ_HOST_AWS}
+      UVICORN_PORT: ${UVICORN_PORT}
+      SERVICE_PORT: ${MACHINE_B1_AWS_PORT}
     restart: on-failure
 
   machine_b2:
     build: ./machine_b2/fastapi_app/.
     ports:
-      - '8010:8000'
+      - '${MACHINE_B2_AWS_PORT}:${UVICORN_PORT}'
     volumes:
       - './machine_b2/fastapi_app:/code'
       - './machine_b2/db_volume:/volume'
@@ -144,13 +155,17 @@ services:
     environment:
       PYTHONUNBUFFERED: 1
       SQLALCHEMY_DATABASE_URL: ${SQLALCHEMY_SQLITE_DATABASE_URI}
-      CONSUL_HOST: consul
+      # CONSUL_HOST: consul
+      CONSUL_HOST: ${CONSUL_RABBITMQ_HOST_AWS}
+      RABBITMQ_HOST: ${CONSUL_RABBITMQ_HOST_AWS}
+      UVICORN_PORT: ${UVICORN_PORT}
+      SERVICE_PORT: ${MACHINE_B2_AWS_PORT}
     restart: on-failure
 
   orders:
     build: ./orders/fastapi_app/.
     ports:
-      - '8002:8000'
+      - '${ORDER_AWS_PORT}:${UVICORN_PORT}'
     volumes:
       - './orders/fastapi_app:/code'
       - './orders/db_volume:/volume'
@@ -163,14 +178,18 @@ services:
     environment:
       PYTHONUNBUFFERED: 1
       SQLALCHEMY_DATABASE_URL: ${SQLALCHEMY_SQLITE_DATABASE_URI}
-      CONSUL_HOST: consul
+      # CONSUL_HOST: consul
+      CONSUL_HOST: ${CONSUL_RABBITMQ_HOST_AWS}
+      RABBITMQ_HOST: ${CONSUL_RABBITMQ_HOST_AWS}
+      UVICORN_PORT: ${UVICORN_PORT}
+      SERVICE_PORT: ${ORDER_AWS_PORT}
     restart: on-failure
-    #command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload --ssl-keyfile /keys/priv.pem --ssl-certfile /keys/cert.pem
+    #command: uvicorn app.main:app --host 0.0.0.0 --port ${UVICORN_PORT} --reload --ssl-keyfile /keys/priv.pem --ssl-certfile /keys/cert.pem
 
   delivery:
     build: ./delivery/fastapi_app/.
     ports:
-      - '8003:8000'
+      - '${DELIVERY_AWS_PORT}:${UVICORN_PORT}'
     volumes:
       - './delivery/fastapi_app:/code'
       - './delivery/db_volume:/volume'
@@ -183,14 +202,18 @@ services:
     environment:
       PYTHONUNBUFFERED: 1
       SQLALCHEMY_DATABASE_URL: ${SQLALCHEMY_SQLITE_DATABASE_URI}
-      CONSUL_HOST: consul
+      # CONSUL_HOST: consul
+      CONSUL_HOST: ${CONSUL_RABBITMQ_HOST_AWS}
+      RABBITMQ_HOST: ${CONSUL_RABBITMQ_HOST_AWS}
+      UVICORN_PORT: ${UVICORN_PORT}
+      SERVICE_PORT: ${DELIVERY_AWS_PORT}
     restart: on-failure
-    #command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload --ssl-keyfile /keys/priv.pem --ssl-certfile /keys/cert.pem
+    #command: uvicorn app.main:app --host 0.0.0.0 --port ${UVICORN_PORT} --reload --ssl-keyfile /keys/priv.pem --ssl-certfile /keys/cert.pem
 
   client:
     build: ./client/fastapi_app/.
     ports:
-      - '8004:8000'
+      - '${CLIENT_AWS_PORT}:${UVICORN_PORT}'
     volumes:
       - './client/fastapi_app:/code'
       - './client/db_volume:/volume'
@@ -203,16 +226,20 @@ services:
     environment:
       PYTHONUNBUFFERED: 1
       SQLALCHEMY_DATABASE_URL: ${SQLALCHEMY_SQLITE_DATABASE_URI}
-      CONSUL_HOST: consul
+      #CONSUL_HOST: consul
+      CONSUL_HOST: ${CONSUL_RABBITMQ_HOST_AWS}
+      RABBITMQ_HOST: ${CONSUL_RABBITMQ_HOST_AWS}
+      SERVICE_PORT: ${CLIENT_AWS_PORT}
+      UVICORN_PORT: ${UVICORN_PORT}
     restart: on-failure
     #command: >
       #sh -c "sqlite3 /volume/monolithic.db < /volume/init_db.sql &&
-             #uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload --ssl-keyfile /keys/priv.pem --ssl-certfile /keys/cert.pem"
+             #uvicorn app.main:app --host 0.0.0.0 --port ${UVICORN_PORT} --reload --ssl-keyfile /keys/priv.pem --ssl-certfile /keys/cert.pem"
 
   payment:
     build: ./payment/fastapi_app/.
     ports:
-      - '8005:8000'
+      - '${PAYMENT_AWS_PORT}:${UVICORN_PORT}'
     volumes:
       - './payment/fastapi_app:/code'
       - './payment/db_volume:/volume'
@@ -225,15 +252,19 @@ services:
     environment:
       PYTHONUNBUFFERED: 1
       SQLALCHEMY_DATABASE_URL: ${SQLALCHEMY_SQLITE_DATABASE_URI}
-      CONSUL_HOST: consul
+      # CONSUL_HOST: consul
+      CONSUL_HOST: ${CONSUL_RABBITMQ_HOST_AWS}
+      RABBITMQ_HOST: ${CONSUL_RABBITMQ_HOST_AWS}
+      UVICORN_PORT: ${UVICORN_PORT}
+      SERVICE_PORT: ${PAYMENT_AWS_PORT}
     restart: on-failure
     #command: sh -c "sqlite3 /volume/monolithic.db < /volume/init_db.sql &&
-             #uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload --ssl-keyfile /keys/priv.pem --ssl-certfile /keys/cert.pem"
+             #uvicorn app.main:app --host 0.0.0.0 --port ${UVICORN_PORT} --reload --ssl-keyfile /keys/priv.pem --ssl-certfile /keys/cert.pem"
 
   warehouse:
     build: ./warehouse/fastapi_app/.
     ports:
-      - '8006:8000'
+      - '${WAREHOUSE_AWS_PORT}:${UVICORN_PORT}'
     volumes:
       - './warehouse/fastapi_app:/code'
       - './warehouse/db_volume:/volume'
@@ -246,13 +277,17 @@ services:
     environment:
       PYTHONUNBUFFERED: 1
       SQLALCHEMY_DATABASE_URL: ${SQLALCHEMY_SQLITE_DATABASE_URI}
-      CONSUL_HOST: consul
+      # CONSUL_HOST: consul
+      CONSUL_HOST: ${CONSUL_RABBITMQ_HOST_AWS}
+      RABBITMQ_HOST: ${CONSUL_RABBITMQ_HOST_AWS}
+      UVICORN_PORT: ${UVICORN_PORT}
+      SERVICE_PORT: ${WAREHOUSE_AWS_PORT}
     restart: on-failure
 
   log:
     build: ./log/fastapi_app/.
     ports:
-      - '8009:8000'
+      - '${LOG_AWS_PORT}:${UVICORN_PORT}'
     volumes:
       - './log/fastapi_app:/code'
       - './log/db_volume:/volume'
@@ -269,9 +304,13 @@ services:
       INFLUXDB_ORG: "your-org"
       INFLUXDB_BUCKET: "your-bucket"
       SQLALCHEMY_DATABASE_URL: ${SQLALCHEMY_SQLITE_DATABASE_URI}
-      CONSUL_HOST: consul
+      # CONSUL_HOST: consul
+      CONSUL_HOST: ${CONSUL_RABBITMQ_HOST_AWS}
+      RABBITMQ_HOST: ${CONSUL_RABBITMQ_HOST_AWS}
+      UVICORN_PORT: ${UVICORN_PORT}
+      SERVICE_PORT: ${LOG_AWS_PORT}
     restart: on-failure
-    # command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --ssl-keyfile /keys/server_key.pem --ssl-certfile /keys/server_cert.pem
+    # command: uvicorn app.main:app --host 0.0.0.0 --port ${UVICORN_PORT} --ssl-keyfile /keys/server_key.pem --ssl-certfile /keys/server_cert.pem
 
   influxdb:
     image: influxdb
@@ -296,8 +335,13 @@ services:
     image: haproxy:latest
     container_name: haproxy
     ports:
-      - "8080:8080"
+      - "${HAPROXY_PORT}:${HAPROXY_PORT}"
       - '${HAPROXY_STATS_PORT}:${HAPROXY_STATS_PORT}'
+    environment:
+      CONSUL_HOST: ${CONSUL_RABBITMQ_HOST_AWS}
+      HAPROXY_PORT: ${HAPROXY_PORT}
+      CONSUL_PORT_SERVICE: ${CONSUL_PORT_SERVICE}
+      GRAFANA_PORT: ${GRAFANA_PORT}
     volumes:
       - './haproxy.cfg:/usr/local/etc/haproxy/haproxy.cfg'
       - ./haproxy.cfg/503_error.html:/usr/local/etc/haproxy/503_error.html

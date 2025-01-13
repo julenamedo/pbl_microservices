@@ -5,6 +5,7 @@ from app.sql.database import SessionLocal # pylint: disable=import-outside-tople
 import logging
 import ssl
 import aio_pika
+from os import environ
 # Configuración del logger
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -29,8 +30,8 @@ async def subscribe_channel():
 
         # Establece la conexión robusta con RabbitMQ
         connection = await aio_pika.connect_robust(
-            host='rabbitmq',
-            port=5671,
+            host=environ.get("RABBITMQ_HOST"),
+            port=int(environ.get("RABBITMQ_PORT_SERVICE")),
             virtualhost='/',
             login='guest',
             password='guest',

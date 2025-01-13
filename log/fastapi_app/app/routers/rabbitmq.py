@@ -9,6 +9,7 @@ from global_variables.global_variables import update_system_resources_periodical
 from datetime import datetime
 from app.sql.database import write_api, INFLUXDB_BUCKET, INFLUXDB_ORG
 from influxdb_client import Point
+from os import environ
 import traceback
 
 
@@ -45,8 +46,8 @@ async def subscribe_channel():
     try:
         # Establece la conexión robusta con RabbitMQ utilizando TLS
         connection = await aio_pika.connect_robust(
-            host='rabbitmq',
-            port=5671,  # Puerto seguro TLS
+            host=environ.get("RABBITMQ_HOST"),
+            port=int(environ.get("RABBITMQ_PORT_SERVICE")),  # Puerto seguro TLS
             virtualhost='/',
             login='guest',
             password='guest',

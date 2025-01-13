@@ -26,7 +26,7 @@ fi
 echo "Starting Uvicorn server with SSL..."
 uvicorn app.main:app \
   --host 0.0.0.0 \
-  --port 8000 \
+  --port ${UVICORN_PORT} \
   --reload \
   --ssl-keyfile /keys/priv.pem \
   --ssl-certfile /keys/cert.pem &

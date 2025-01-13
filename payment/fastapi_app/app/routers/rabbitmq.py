@@ -2,6 +2,7 @@ import aio_pika
 import json
 import ssl
 import logging
+from os import environ
 from app.sql.database import SessionLocal  # pylint: disable=import-outside-toplevel
 from app.sql import crud, models
 from global_variables.global_variables import update_system_resources_periodically, set_rabbitmq_status, get_rabbitmq_status, system_values
@@ -29,8 +30,8 @@ async def subscribe_channel():
     try:
         logger.info("Intentando suscribirse...")
         connection = await aio_pika.connect_robust(
-            host='rabbitmq',
-            port=5671,  # Puerto seguro SSL
+            host=environ.get("RABBITMQ_HOST"),
+            port=int(environ.get("RABBITMQ_PORT_SERVICE")),  # Puerto seguro SSL
             virtualhost='/',
             login='guest',
             password='guest',

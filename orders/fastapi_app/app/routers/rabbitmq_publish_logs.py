@@ -2,6 +2,7 @@ import aio_pika
 import json
 import ssl
 import logging
+from os import environ
 from app.sql.database import SessionLocal # pylint: disable=import-outside-toplevel
 
 
@@ -29,8 +30,8 @@ async def subscribe_channel():
 
         # Establece la conexión robusta con RabbitMQ
         connection = await aio_pika.connect_robust(
-            host='rabbitmq',
-            port=5671,
+            host=environ.get("RABBITMQ_HOST"),
+            port=int(environ.get("RABBITMQ_PORT_SERVICE")),
             virtualhost='/',
             login='guest',
             password='guest',
