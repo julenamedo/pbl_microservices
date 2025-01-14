@@ -80,3 +80,8 @@ class Log(BaseModel):
     exchange = Column(String(256), nullable=False)
     routing_key = Column(String(256), nullable=False)
     data = Column(String(256), nullable=False)
+
+
+class BlockIPRequest(BaseModel):
+    ip_address: str
+    reason: str = "none"

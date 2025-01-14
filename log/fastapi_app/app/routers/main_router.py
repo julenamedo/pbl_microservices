@@ -11,7 +11,7 @@ from fastapi import APIRouter, Depends, status, HTTPException
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer, OAuth2PasswordBearer
 from jose import JWTError, jwt
 from pydantic.json_schema import models_json_schema
-from app.sql import crud
+from app.sql import crud, models
 from app.routers import rabbitmq, rabbitmq_publish_logs
 from .router_utils import raise_and_log_error
 from typing import Dict
@@ -241,3 +241,30 @@ async def get_logs(current_user: Dict = Depends(get_current_user)):
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Internal server error while retrieving logs."
         )
+
+
+# Blocked IP-s
+@router.get("/blocked_ips", tags=["Blocked IPs"])
+async def get_blocked_ips(current_user: Dict = Depends(get_current_user)):
+    """
+    Recupera las IPs bloqueadas desde InfluxDB.
+    """
+    try:
+        blocked_ips = await crud.get_blocked_ips()
+        return {"blocked_ips": blocked_ips}
+    except Exception as e:
+        logger.error(f"Error al recuperar IPs bloqueadas: {e}")
+        raise HTTPException(status_code=500, detail=f"Error al recuperar IPs bloqueadas: {e}")
+
+
+@router.post("/block_ip", tags=["Blocked IPs"])
+async def block_ip(request: models.BlockIPRequest, current_user: Dict = Depends(get_current_user)):
+    """
+    Registra una nueva IP bloqueada en InfluxDB.
+    """
+    try:
+        await crud.register_blocked_ip(request.ip_address, request.reason)
+        return {"message": f"IP {request.ip_address} bloqueada con éxito."}
+    except Exception as e:
+        logger.error(f"Error al bloquear IP: {e}")
+        raise HTTPException(status_code=500, detail=f"Error al bloquear IP: {e}")
