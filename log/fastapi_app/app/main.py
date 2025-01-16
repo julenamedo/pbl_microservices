@@ -60,7 +60,7 @@ class LokiLoggerHandler(logging.Handler):
 
 
 custom_handler = LokiLoggerHandler(
-    url="http://loki:3100/loki/api/v1/push",  # Dirección de Loki
+    url="https://loki:3100/loki/api/v1/push",  # Dirección de Loki
     labels={"job": "log-service", "environment": "development"},
 )
 # Añade el handler de Loki a Loguru
