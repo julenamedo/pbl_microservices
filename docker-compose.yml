@@ -292,6 +292,20 @@ services:
       --tls-cert=/keys/server_cert.pem
       --tls-key=/keys/server_key.pem
 
+  telegraf:
+    image: telegraf:latest
+    container_name: telegraf
+    volumes:
+      - ./telegraf/telegraf.conf:/etc/telegraf/telegraf.conf:ro
+      - ./keys:/keys
+    environment:
+      HOSTNAME: telegraf-container
+    depends_on:
+      - influxdb
+      - rabbitmq
+    restart: always
+
+
   haproxy:
     image: haproxy:latest
     container_name: haproxy
@@ -304,6 +318,7 @@ services:
       - './keys:/keys'
     depends_on:
       - grafana
+      - telegraf
       - loki
       - machine_a1
       - machine_a2
