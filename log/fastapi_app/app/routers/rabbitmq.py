@@ -34,7 +34,7 @@ exchange_commands_name = 'commands'
 exchange_name = 'events'
 exchange_responses_name = 'responses'
 exchange_logs_name = 'log'
-LOKI_URL = "http://loki:3100/loki/api/v1/push"  # Replace with your Loki URL
+LOKI_URL = "https://loki:3100/loki/api/v1/push"  # Replace with your Loki URL
 LOKI_LABELS = {"job": "log-service", "environment": "production"}
 
 
