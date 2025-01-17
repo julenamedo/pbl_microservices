@@ -296,15 +296,15 @@ services:
     image: telegraf:latest
     container_name: telegraf
     volumes:
-      - ./telegraf/telegraf.conf:/etc/telegraf/telegraf.conf:ro
       - ./keys:/keys
+      - ./telegraf/telegraf.conf:/etc/telegraf/telegraf.conf:ro
     environment:
-      HOSTNAME: telegraf-container
+      - HOST_PROC=/proc
+      - HOST_SYS=/sys
+      - HOST_ETC=/etc
     depends_on:
       - influxdb
-      - rabbitmq
     restart: always
-
 
   haproxy:
     image: haproxy:latest
