@@ -293,18 +293,23 @@ services:
       --tls-key=/keys/server_key.pem
 
   telegraf:
-    image: telegraf:latest
+    image: telegraf:1.29.2-alpine
     container_name: telegraf
+    deploy:
+      restart_policy:
+        condition: on-failure
+        delay: 1s
+        max_attempts: 30
     volumes:
       - ./keys:/keys
       - ./telegraf/telegraf.conf:/etc/telegraf/telegraf.conf:ro
-    environment:
-      - HOST_PROC=/proc
-      - HOST_SYS=/sys
-      - HOST_ETC=/etc
+      - ./data/telegraf/logs:/var/log/telegraf:rw
+      - /var/run/docker.sock:/var/run/docker.sock
     depends_on:
       - influxdb
-    restart: always
+    environment:
+      LOKI_URL: "https://loki:3100"
+    restart: unless-stopped
 
   haproxy:
     image: haproxy:latest
