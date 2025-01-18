@@ -12,6 +12,9 @@ services:
       - GF_SERVER_CERT_FILE=/keys/server_cert.pem
       - GF_SERVER_CERT_KEY=/keys/server_key.pem
     volumes:
+      - ./grafana/provisioning:/etc/grafana/provisioning:rw
+      - ./grafana/dashboards:/var/lib/grafana/dashboards:rw
+      - ./grafana/notifiers:/etc/grafana/notifiers:rw
       - ./keys:/keys
       - ./grafana_data:/var/lib/grafana
     depends_on:
@@ -42,11 +45,32 @@ services:
       - '8500:8500'     # Port For Consul Web UI
       - '8600:8600'
       - '8600:8600/udp'
+    environment:
+      CONSUL_BIND_INTERFACE: eth0
+    volumes:
+      - ./keys:/consul/certs:ro
     healthcheck:
       test: [ "CMD", "curl", "-f", "http://localhost:8500/" ]
       interval: 2s
       timeout: 2s
       retries: 10
+    restart: always
+
+    # Telegraf service
+  telegraf:
+    image: telegraf:latest
+    container_name: telegraf
+    depends_on:
+      - influxdb
+      - consul
+    volumes:
+      - ./grafana/telegraf/telegraf.conf:/etc/telegraf/telegraf.conf:ro
+      - ./keys/ca_cert.pem:/etc/telegraf/ca_cert.pem:ro  # Mount CA certificate
+      - ./keys/server_cert.pem:/etc/telegraf/server_cert.pem:ro  # Mount CA certificate
+      - ./keys/server_key.pem:/etc/telegraf/server_key.pem:ro  # Mount CA certificate
+    environment:
+      INFLUXDB_URL: "https://influxdb:8086"
+      INFLUXDB_TOKEN: "EE4RtkK4E4dGXk0tuNN-HnUg30fjHAvjn-FloN_RAAUYYguPkMtWtu_HKxYtXewtpsTYHGjK2T20qEgQB-sT8g=="
     restart: always
 
   rabbitmq:
@@ -251,6 +275,7 @@ services:
 
   log:
     build: ./log/fastapi_app/.
+    container_name: log
     ports:
       - '8009:8000'
     volumes:
