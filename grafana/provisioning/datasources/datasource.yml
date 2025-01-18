@@ -1,0 +1,29 @@
+apiVersion: 1
+
+datasources:
+  - name: InfluxDB_v2_Flux
+    type: influxdb
+    access: proxy
+    editable: true
+    url: "https://influxdb:8086"
+    jsonData:
+      version: Flux
+      organization: "your-org"
+      defaultBucket: "your-bucket"
+      tlsSkipVerify: false  # Ensure this is set to false to validate the certificate
+      tlsAuthWithCACert: true
+    secureJsonData:
+      token: "EE4RtkK4E4dGXk0tuNN-HnUg30fjHAvjn-FloN_RAAUYYguPkMtWtu_HKxYtXewtpsTYHGjK2T20qEgQB-sT8g=="
+      tlsCACert: "/keys/server_cert.pem"  # Path to the CA certificate
+
+  - name: Loki
+    type: loki
+    access: proxy
+    editable: true
+    url: "https://loki:3100"
+    jsonData:
+      maxLines: 1000
+      tlsSkipVerify: false  # Ensure certificate is validated
+      tlsAuthWithCACert: true
+    secureJsonData:
+      tlsCACert: "/keys/server_cert.pem"  # Path to the CA certificate
