@@ -9,7 +9,7 @@ load_dotenv()
 class Config:
     """Set configuration vars from .env file."""
     CONSUL_HOST = environ.get("CONSUL_HOST", "consul")
-    CONSUL_PORT = environ.get("CONSUL_PORT", 8500)
+    CONSUL_PORT = environ.get("CONSUL_PORT", 8501)
     CONSUL_DNS_PORT = environ.get("CONSUL_DNS_PORT", 8600)
     PORT = int(environ.get("UVICORN_PORT", '8000'))
     SERVICE_NAME = environ.get("SERVICE_NAME", "machine_a1")

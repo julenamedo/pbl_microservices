@@ -10,7 +10,7 @@ class Config:
     """Set configuration vars from .env file."""
     # Use the Docker service name for Consul as it resolves to the container's IP in Docker's network
     CONSUL_HOST = environ.get("CONSUL_HOST", "consul")  # Default to "consul", the service name in docker-compose
-    CONSUL_PORT = int(environ.get("CONSUL_PORT", 8500))
+    CONSUL_PORT = int(environ.get("CONSUL_PORT", 8501))
     CONSUL_DNS_PORT = int(environ.get("CONSUL_DNS_PORT", 8600))
     PORT = int(environ.get("UVICORN_PORT", '8000'))
     SERVICE_NAME = environ.get("SERVICE_NAME", "payment")

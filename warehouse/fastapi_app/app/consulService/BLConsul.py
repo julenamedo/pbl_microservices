@@ -9,9 +9,13 @@ logger = logging.getLogger(__name__)
 config = Config.get_instance()
 
 # Consul instance
+
+# Updated Consul instance with TLS
 consul_instance = consul.Consul(
     host=config.CONSUL_HOST,
-    port=config.CONSUL_PORT
+    port=config.CONSUL_PORT,
+    scheme="https",
+    verify="/keys/ca_cert.pem"  # Path to the CA certificate for server verification
 )
 
 # DNS resolver

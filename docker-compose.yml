@@ -42,15 +42,25 @@ services:
       - '8300:8300'
       - '8301:8301'
       - '8301:8301/udp'
-      - '8500:8500'     # Port For Consul Web UI
+      - '8501:8501'     # HTTPS UI
       - '8600:8600'
       - '8600:8600/udp'
     environment:
       CONSUL_BIND_INTERFACE: eth0
+      CONSUL_CLIENT_ADDR: 0.0.0.0
+      CONSUL_SERVER: "true"
+      CONSUL_VERIFY_INCOMING: "true"       # Enable incoming request verification
+      CONSUL_VERIFY_OUTGOING: "true"       # Enable outgoing request verification
+      CONSUL_VERIFY_SERVER_HOSTNAME: "true"
+      CONSUL_CA_FILE: "/consul/certs/ca_cert.pem"
+      CONSUL_CERT_FILE: "/consul/certs/server_cert.pem"
+      CONSUL_KEY_FILE: "/consul/certs/server_key.pem"
+      CONSUL_HTTP_PORT: -1                 # Disable HTTP
+      CONSUL_HTTPS_PORT: 8501              # Enable HTTPS
     volumes:
       - ./keys:/consul/certs:ro
     healthcheck:
-      test: [ "CMD", "curl", "-f", "http://localhost:8500/" ]
+      test: ["CMD", "curl", "-f", "--cacert", "/consul/certs/ca_cert.pem", "https://localhost:8501/v1/status/leader"]
       interval: 2s
       timeout: 2s
       retries: 10
