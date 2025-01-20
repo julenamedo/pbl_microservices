@@ -1,0 +1,21 @@
+version: '3.8'
+
+services:
+
+  haproxy:
+    image: haproxy:latest
+    container_name: haproxy
+    ports:
+      - "${HAPROXY_PORT}:${HAPROXY_PORT}"
+      - '${HAPROXY_STATS_PORT}:${HAPROXY_STATS_PORT}'
+    environment:
+      CONSUL_HOST: ${CONSUL_RABBITMQ_HOST_AWS}
+      HAPROXY_PORT: ${HAPROXY_PORT}
+      CONSUL_PORT_SERVICE: ${CONSUL_PORT_SERVICE}
+      GRAFANA_PORT: ${GRAFANA_PORT}
+    volumes:
+      - './haproxy.cfg:/usr/local/etc/haproxy/haproxy.cfg'
+      - ./haproxy.cfg/503_error.html:/usr/local/etc/haproxy/503_error.html
+      - './keys:/keys'
+    env_file:
+      - .env

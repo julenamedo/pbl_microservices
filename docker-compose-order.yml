@@ -1,0 +1,28 @@
+version: '3.8'
+
+services:
+
+  orders:
+    build: ./orders/fastapi_app/.
+    ports:
+      - '${ORDER_AWS_PORT}:${UVICORN_PORT}'
+    volumes:
+      - './orders/fastapi_app:/code'
+      - './orders/db_volume:/volume'
+      - './keys:/keys'
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      consul:
+        condition: service_healthy
+    environment:
+      PYTHONUNBUFFERED: 1
+      SQLALCHEMY_DATABASE_URL: ${SQLALCHEMY_SQLITE_DATABASE_URI}
+      # CONSUL_HOST: consul
+      CONSUL_HOST: ${CONSUL_RABBITMQ_HOST_AWS}
+      RABBITMQ_HOST: ${CONSUL_RABBITMQ_HOST_AWS}
+      UVICORN_PORT: ${UVICORN_PORT}
+      SERVICE_PORT: ${ORDER_AWS_PORT}
+    restart: on-failure
+    #command: uvicorn app.main:app --host 0.0.0.0 --port ${UVICORN_PORT} --reload --ssl-keyfile /keys/priv.pem --ssl-certfile /keys/cert.pem
+

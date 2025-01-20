@@ -1,0 +1,79 @@
+version: '3.8'
+
+services:
+  # Servicios para grafana
+  grafana:
+    image: grafana/grafana
+    container_name: grafana
+    ports:
+      - '3000:3000'
+    environment:
+      - GF_SERVER_PROTOCOL=https
+      - GF_SERVER_CERT_FILE=/keys/server_cert.pem
+      - GF_SERVER_CERT_KEY=/keys/server_key.pem
+    volumes:
+      - ./grafana/provisioning:/etc/grafana/provisioning:rw
+      - ./grafana/dashboards:/var/lib/grafana/dashboards:rw
+      - ./grafana/notifiers:/etc/grafana/notifiers:rw
+      - ./keys:/keys
+      - ./grafana_data:/var/lib/grafana
+    depends_on:
+      - loki
+    restart: always
+
+  loki:
+    image: grafana/loki:latest
+    container_name: loki
+    ports:
+      - "3100:3100"
+    volumes:
+      - ./grafana/loki/loki-config.yaml:/etc/loki-local-config.yaml
+      - ./loki_data:/tmp/loki
+      - ./keys:/keys
+    command: -config.file=/etc/loki-local-config.yaml -config.expand-env=true
+    restart: always
+
+  influxdb:
+    image: influxdb
+    container_name: influxdb
+    ports:
+      - "8086:8086"  # HTTPS
+    environment:
+      DOCKER_INFLUXDB_INIT_MODE: setup
+      DOCKER_INFLUXDB_INIT_USERNAME: ${INFLUXDB_USERNAME}
+      DOCKER_INFLUXDB_INIT_PASSWORD: ${INFLUXDB_PASSWORD}
+      DOCKER_INFLUXDB_INIT_ORG: ${INFLUXDB_ORGANIZATION}
+      DOCKER_INFLUXDB_INIT_BUCKET: ${INFLUXDB_BUCKET}
+    volumes:
+      - ./influxdb_data:/var/lib/influxdb2
+      - ./keys:/keys
+    command: >
+      influxd
+      --tls-cert=/keys/server_cert.pem
+      --tls-key=/keys/server_key.pem
+
+  telegraf:
+    image: telegraf:latest
+    container_name: telegraf
+    depends_on:
+      - influxdb
+    volumes:
+      - ./grafana/telegraf/telegraf.conf:/etc/telegraf/telegraf.conf:ro
+      - ./keys/ca_cert.pem:/etc/telegraf/ca_cert.pem:ro  # Mount CA certificate
+      - ./keys/server_cert.pem:/etc/telegraf/server_cert.pem:ro  # Mount CA certificate
+      - ./keys/server_key.pem:/etc/telegraf/server_key.pem:ro  # Mount CA certificate
+    environment:
+      - CONSUL_IP=${CONSUL_HOST}
+      - CONSUL_WEB_UI_PORT=${CONSUL_PORT_WEB_UI}
+      - CONSUL_TOKEN=${CONSUL_TOKEN}
+      - HAPROXY_HOST=${HAPROXY_HOST}
+      - HAPROXY_STATS_PORT=${HAPROXY_STATS_PORT}
+      - RABBITMQ_IP=${RABBITMQ_HOST}
+      - RABBITMQ_WEB_UI_PORT=${RABBITMQ_PORT_WEB_UI}
+      - RABBITMQ_DEFAULT_USER=${RABBITMQ_USERNAME}
+      - RABBITMQ_DEFAULT_PASS=${RABBITMQ_PASSWORD}
+      - INFLUXDB_URL=${INFLUXDB_URL}
+      - INFLUXDB_ORGANIZATION=${INFLUXDB_ORGANIZATION}
+      - INFLUXDB_BUCKET=${INFLUXDB_BUCKET}
+      - INFLUXDB_AUTH_TOKEN=${INFLUXDB_AUTH_TOKEN}
+    restart: always
