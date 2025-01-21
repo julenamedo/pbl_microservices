@@ -1,3 +1,4 @@
+# Compose for observability
 version: '3.8'
 
 services:
