@@ -1,77 +1,6 @@
 version: '3.8'
 
 services:
-  # Servicios para grafana
-  grafana:
-    image: grafana/grafana
-    container_name: grafana
-    ports:
-      - '3000:3000'
-    environment:
-      - GF_SERVER_PROTOCOL=https
-      - GF_SERVER_CERT_FILE=/keys/server_cert.pem
-      - GF_SERVER_CERT_KEY=/keys/server_key.pem
-    volumes:
-      - ./grafana/provisioning:/etc/grafana/provisioning:rw
-      - ./grafana/dashboards:/var/lib/grafana/dashboards:rw
-      - ./grafana/notifiers:/etc/grafana/notifiers:rw
-      - ./keys:/keys
-      - ./grafana_data:/var/lib/grafana
-    depends_on:
-      - loki
-    restart: always
-
-  loki:
-    image: grafana/loki:latest
-    container_name: loki
-    ports:
-      - "3100:3100"
-    volumes:
-      - ./grafana/loki/loki-config.yaml:/etc/loki-local-config.yaml
-      - ./loki_data:/tmp/loki
-      - ./keys:/keys
-    command: -config.file=/etc/loki-local-config.yaml -config.expand-env=true
-    restart: always
-
-
-  # Servicio Consul
-  consul:
-    image: hashicorp/consul:1.16.0
-    container_name: consul
-    ports:
-      - '8300:8300'
-      - '8301:8301'
-      - '8301:8301/udp'
-      - '8500:${CONSUL_PORT_WEB_UI}'     # Port For Consul Web UI
-      - '8600:${CONSUL_PORT_SERVICE}'
-      - '8600:8600/udp'
-    healthcheck:
-      test: [ "CMD", "curl", "-f", "http://localhost:${CONSUL_PORT_WEB_UI}/" ]
-      interval: 2s
-      timeout: 2s
-      retries: 10
-    restart: always
-
-  rabbitmq:
-    image: rabbitmq:3-management   # Usa la versión con interfaz de administración
-    container_name: rabbitmq
-    ports:
-      - "${RABBITMQ_PORT_WEB_UI}:${RABBITMQ_PORT_WEB_UI}"
-      - "${RABBITMQ_PORT_SERVICE}:${RABBITMQ_PORT_SERVICE}"
-
-    volumes:
-      - './keys:/etc/ssl/certs'   # Monta el directorio con los certificados
-      - './rabbitmq:/etc/rabbitmq' # Configuración personalizada de RabbitMQ# Puerto para la interfaz de administración
-    healthcheck:
-      test: ["CMD", "rabbitmqctl", "ping"]
-      interval: 30s
-      timeout: 10s
-      retries: 5
-    environment:
-      RABBITMQ_DEFAULT_USER: guest
-      RABBITMQ_DEFAULT_PASS: guest
-    restart: always
-
   machine_a1:
     build: ./machine_a1/fastapi_app/.
     ports:
@@ -80,11 +9,11 @@ services:
       - './machine_a1/fastapi_app:/code'
       - './machine_a1/db_volume:/volume'
       - './keys:/keys'
-    depends_on:
-      rabbitmq:
-        condition: service_healthy
-      consul:
-        condition: service_healthy
+    # depends_on:
+      # rabbitmq:
+        # condition: service_healthy
+      # consul:
+        # condition: service_healthy
     environment:
       PYTHONUNBUFFERED: 1
       SQLALCHEMY_DATABASE_URL: ${SQLALCHEMY_SQLITE_DATABASE_URI}
@@ -104,11 +33,11 @@ services:
       - './machine_a2/fastapi_app:/code'
       - './machine_a2/db_volume:/volume'
       - './keys:/keys'
-    depends_on:
-      rabbitmq:
-        condition: service_healthy
-      consul:
-        condition: service_healthy
+    # depends_on:
+      # rabbitmq:
+        # condition: service_healthy
+      # consul:
+        # condition: service_healthy
     environment:
       PYTHONUNBUFFERED: 1
       SQLALCHEMY_DATABASE_URL: ${SQLALCHEMY_SQLITE_DATABASE_URI}
@@ -127,11 +56,11 @@ services:
       - './machine_b1/fastapi_app:/code'
       - './machine_b1/db_volume:/volume'
       - './keys:/keys'
-    depends_on:
-      rabbitmq:
-        condition: service_healthy
-      consul:
-        condition: service_healthy
+    # depends_on:
+      # rabbitmq:
+        # condition: service_healthy
+      # consul:
+        # condition: service_healthy
     environment:
       PYTHONUNBUFFERED: 1
       SQLALCHEMY_DATABASE_URL: ${SQLALCHEMY_SQLITE_DATABASE_URI}
@@ -150,11 +79,11 @@ services:
       - './machine_b2/fastapi_app:/code'
       - './machine_b2/db_volume:/volume'
       - './keys:/keys'
-    depends_on:
-      rabbitmq:
-        condition: service_healthy
-      consul:
-        condition: service_healthy
+    # depends_on:
+      # rabbitmq:
+        # condition: service_healthy
+      # consul:
+        # condition: service_healthy
     environment:
       PYTHONUNBUFFERED: 1
       SQLALCHEMY_DATABASE_URL: ${SQLALCHEMY_SQLITE_DATABASE_URI}
@@ -173,11 +102,11 @@ services:
       - './orders/fastapi_app:/code'
       - './orders/db_volume:/volume'
       - './keys:/keys'
-    depends_on:
-      rabbitmq:
-        condition: service_healthy
-      consul:
-        condition: service_healthy
+    # depends_on:
+      # rabbitmq:
+        # condition: service_healthy
+      # consul:
+        # condition: service_healthy
     environment:
       PYTHONUNBUFFERED: 1
       SQLALCHEMY_DATABASE_URL: ${SQLALCHEMY_SQLITE_DATABASE_URI}
@@ -197,11 +126,11 @@ services:
       - './delivery/fastapi_app:/code'
       - './delivery/db_volume:/volume'
       - './keys:/keys'
-    depends_on:
-      rabbitmq:
-        condition: service_healthy
-      consul:
-        condition: service_healthy
+    # depends_on:
+      # rabbitmq:
+        # condition: service_healthy
+      # consul:
+        # condition: service_healthy
     environment:
       PYTHONUNBUFFERED: 1
       SQLALCHEMY_DATABASE_URL: ${SQLALCHEMY_SQLITE_DATABASE_URI}
@@ -221,11 +150,11 @@ services:
       - './client/fastapi_app:/code'
       - './client/db_volume:/volume'
       - './keys:/keys'
-    depends_on:
-      rabbitmq:
-        condition: service_healthy
-      consul:
-        condition: service_healthy
+    # depends_on:
+      # rabbitmq:
+        # condition: service_healthy
+      # consul:
+        # condition: service_healthy
     environment:
       PYTHONUNBUFFERED: 1
       SQLALCHEMY_DATABASE_URL: ${SQLALCHEMY_SQLITE_DATABASE_URI}
@@ -247,11 +176,11 @@ services:
       - './payment/fastapi_app:/code'
       - './payment/db_volume:/volume'
       - './keys:/keys'
-    depends_on:
-      rabbitmq:
-        condition: service_healthy
-      consul:
-        condition: service_healthy
+    # depends_on:
+      # rabbitmq:
+        # condition: service_healthy
+      # consul:
+        # condition: service_healthy
     environment:
       PYTHONUNBUFFERED: 1
       SQLALCHEMY_DATABASE_URL: ${SQLALCHEMY_SQLITE_DATABASE_URI}
@@ -272,11 +201,11 @@ services:
       - './warehouse/fastapi_app:/code'
       - './warehouse/db_volume:/volume'
       - './keys:/keys'
-    depends_on:
-      rabbitmq:
-        condition: service_healthy
-      consul:
-        condition: service_healthy
+    # depends_on:
+      # rabbitmq:
+        # condition: service_healthy
+      # consul:
+        # condition: service_healthy
     environment:
       PYTHONUNBUFFERED: 1
       SQLALCHEMY_DATABASE_URL: ${SQLALCHEMY_SQLITE_DATABASE_URI}
@@ -295,11 +224,11 @@ services:
       - './log/fastapi_app:/code'
       - './log/db_volume:/volume'
       - './keys:/keys'
-    depends_on:
-      rabbitmq:
-        condition: service_healthy
-      consul:
-        condition: service_healthy
+    # depends_on:
+      # rabbitmq:
+        # condition: service_healthy
+      # consul:
+        # condition: service_healthy
     environment:
       PYTHONUNBUFFERED: 1
       INFLUXDB_URL: "https://influxdb:8086"
@@ -314,82 +243,3 @@ services:
       SERVICE_PORT: ${LOG_AWS_PORT}
     restart: on-failure
     # command: uvicorn app.main:app --host 0.0.0.0 --port ${UVICORN_PORT} --ssl-keyfile /keys/server_key.pem --ssl-certfile /keys/server_cert.pem
-
-  influxdb:
-    image: influxdb
-    container_name: influxdb
-    ports:
-      - "8086:8086"  # HTTPS
-    environment:
-      DOCKER_INFLUXDB_INIT_MODE: setup
-      DOCKER_INFLUXDB_INIT_USERNAME: ${INFLUXDB_USERNAME}
-      DOCKER_INFLUXDB_INIT_PASSWORD: ${INFLUXDB_PASSWORD}
-      DOCKER_INFLUXDB_INIT_ORG: ${INFLUXDB_ORGANIZATION}
-      DOCKER_INFLUXDB_INIT_BUCKET: ${INFLUXDB_BUCKET}
-    volumes:
-      - ./influxdb_data:/var/lib/influxdb2
-      - ./keys:/keys
-    command: >
-      influxd
-      --tls-cert=/keys/server_cert.pem
-      --tls-key=/keys/server_key.pem
-
-  telegraf:
-    image: telegraf:latest
-    container_name: telegraf
-    depends_on:
-      - influxdb
-      - consul
-    volumes:
-      - ./grafana/telegraf/telegraf.conf:/etc/telegraf/telegraf.conf:ro
-      - ./keys/ca_cert.pem:/etc/telegraf/ca_cert.pem:ro  # Mount CA certificate
-      - ./keys/server_cert.pem:/etc/telegraf/server_cert.pem:ro  # Mount CA certificate
-      - ./keys/server_key.pem:/etc/telegraf/server_key.pem:ro  # Mount CA certificate
-    environment:
-      - CONSUL_IP=${CONSUL_HOST}
-      - CONSUL_WEB_UI_PORT=${CONSUL_PORT_WEB_UI}
-      - CONSUL_TOKEN=${CONSUL_TOKEN}
-      - HAPROXY_HOST=${HAPROXY_HOST}
-      - HAPROXY_STATS_PORT=${HAPROXY_STATS_PORT}
-      - RABBITMQ_IP=${RABBITMQ_HOST}
-      - RABBITMQ_WEB_UI_PORT=${RABBITMQ_PORT_WEB_UI}
-      - RABBITMQ_DEFAULT_USER=${RABBITMQ_USERNAME}
-      - RABBITMQ_DEFAULT_PASS=${RABBITMQ_PASSWORD}
-      - INFLUXDB_URL=${INFLUXDB_URL}
-      - INFLUXDB_ORGANIZATION=${INFLUXDB_ORGANIZATION}
-      - INFLUXDB_BUCKET=${INFLUXDB_BUCKET}
-      - INFLUXDB_AUTH_TOKEN=${INFLUXDB_AUTH_TOKEN}
-    restart: always
-
-  haproxy:
-    image: haproxy:latest
-    container_name: haproxy
-    ports:
-      - "${HAPROXY_PORT}:${HAPROXY_PORT}"
-      - '${HAPROXY_STATS_PORT}:${HAPROXY_STATS_PORT}'
-    environment:
-      CONSUL_HOST: ${CONSUL_RABBITMQ_HOST_AWS}
-      HAPROXY_PORT: ${HAPROXY_PORT}
-      CONSUL_PORT_SERVICE: ${CONSUL_PORT_SERVICE}
-      GRAFANA_PORT: ${GRAFANA_PORT}
-    volumes:
-      - './haproxy.cfg:/usr/local/etc/haproxy/haproxy.cfg'
-      - ./haproxy.cfg/503_error.html:/usr/local/etc/haproxy/503_error.html
-      - './keys:/keys'
-    depends_on:
-      - grafana
-      - loki
-      - telegraf
-      - machine_a1
-      - machine_a2
-      - machine_b1
-      - machine_b2
-      - warehouse
-      - orders
-      - delivery
-      - client
-      - payment
-      - log
-      - rabbitmq
-    env_file:
-      - .env
