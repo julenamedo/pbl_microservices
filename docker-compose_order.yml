@@ -10,11 +10,11 @@ services:
       - './orders/fastapi_app:/code'
       - './orders/db_volume:/volume'
       - './keys:/keys'
-    depends_on:
-      rabbitmq:
-        condition: service_healthy
-      consul:
-        condition: service_healthy
+    # depends_on:
+      # rabbitmq:
+        # condition: service_healthy
+      # consul:
+        # condition: service_healthy
     environment:
       PYTHONUNBUFFERED: 1
       SQLALCHEMY_DATABASE_URL: ${SQLALCHEMY_SQLITE_DATABASE_URI}
