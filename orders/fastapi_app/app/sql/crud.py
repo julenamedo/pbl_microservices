@@ -3,7 +3,7 @@
 import logging
 import json
 from datetime import datetime
-from sqlalchemy import or_
+from sqlalchemy import or_, text
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from .database import SessionLocal
@@ -84,8 +84,18 @@ async def get_order_list(db: AsyncSession):
 
 async def get_order(db: AsyncSession, order_id):
     """Load an order from the database."""
-    order = await get_element_by_id(db, models.Order, order_id)
-    return order
+    # order = await get_element_by_id(db, models.Order, order_id)
+    # return order
+
+    query = "SELECT * FROM " + "manufacturing_order WHERE id = " + str(order_id) + ";"
+    result = await db.execute(text(query))
+    row = result.fetchone()
+    print("mecachis")
+    print(row)
+    print(dict(row._mapping))
+    if row:
+        return dict(row._mapping)
+    return None
 
 
 async def get_orders_by_client(db: AsyncSession, client_id):

@@ -222,7 +222,7 @@ async def register(user: schemas.UserCreate, db: AsyncSession = Depends(dependen
 @router.post("/login")
 async def login(user: schemas.UserCreate, db: AsyncSession = Depends(dependencies.get_db)):
     db_user = await crud.get_user_by_username(db, user.username)
-
+    print(db_user)
     if not db_user or not crud.verify_password(user.password, db_user.password):
         logger.error("Invalid credentials, missing id_client or username.")
         raise fastapi.HTTPException(status_code=400, detail="Invalid credentials")

@@ -73,6 +73,14 @@ class Order(OrderBase):
         example="Finished"
     )
 
+class OrderPet(BaseModel):
+    """Order schema definition."""
+    model_config = ConfigDict(from_attributes=True)  # ORM mode ON
+    id: str = Field(
+        description="Primary key/identifier of the order.",
+        default=None,
+        example=1
+    )
 
 class OrderPost(OrderBase):
     """Schema definition to create a new order."""

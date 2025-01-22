@@ -226,7 +226,7 @@ async def create_order(
         raise_and_log_error(logger, status.HTTP_409_CONFLICT, f"Error creating order: {exc}")
 
 @router.get(
-    "/order/retrieve/{order_id}",
+    "/order/retrieve",
     summary="Retrieve single order by id",
     responses={
         status.HTTP_200_OK: {
@@ -240,13 +240,16 @@ async def create_order(
     tags=['Order']
 )
 async def get_single_order(
-        order_id: int,
+        order_schema: schemas.OrderPet,
         db: AsyncSession = Depends(dependencies.get_db),
         current_user: Dict = Depends(get_current_user)
 ):
     """Retrieve single order by id"""
-    logger.debug("GET '/order/%i' endpoint called.", order_id)
-    order = await crud.get_order(db, order_id)
+    print(order_schema)
+    logger.debug("GET '/order/%i' endpoint called.", order_schema.id)
+    order = await crud.get_order(db, order_schema.id)
+    print("==============================================================================")
+    print(order)
     data = {
         "message": "INFO - Order obtained by id"
     }
@@ -254,7 +257,7 @@ async def get_single_order(
     routing_key = "orders.get_single_order.info"
     await rabbitmq_publish_logs.publish_log(message_body, routing_key)
     if not order:
-        raise_and_log_error(logger, status.HTTP_404_NOT_FOUND, f"Order {order_id} not found")
+        raise_and_log_error(logger, status.HTTP_404_NOT_FOUND, f"Order {order_schema.order_id} not found")
         data = {
             "message": "ERROR - Order not found"
         }
