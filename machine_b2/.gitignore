@@ -1,6 +1,5 @@
 #.idea/
 #/venv/
-*.db
 #.env
 
 
