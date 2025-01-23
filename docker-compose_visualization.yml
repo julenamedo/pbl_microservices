@@ -19,7 +19,9 @@ services:
       - ./keys:/keys
       - ./grafana_data:/var/lib/grafana
     depends_on:
-      - loki
+      - loki    
+    env_file:
+      - .env
     restart: always
 
   loki:
@@ -30,7 +32,9 @@ services:
     volumes:
       - ./grafana/loki/loki-config.yaml:/etc/loki-local-config.yaml
       - ./loki_data:/tmp/loki
-      - ./keys:/keys
+      - ./keys:/keys    
+    env_file:
+      - .env
     command: -config.file=/etc/loki-local-config.yaml -config.expand-env=true
     restart: always
 
@@ -47,7 +51,9 @@ services:
       DOCKER_INFLUXDB_INIT_BUCKET: ${INFLUXDB_BUCKET}
     volumes:
       - ./influxdb_data:/var/lib/influxdb2
-      - ./keys:/keys
+      - ./keys:/keys    
+    env_file:
+      - .env
     command: >
       influxd
       --tls-cert=/keys/server_cert.pem
@@ -76,5 +82,7 @@ services:
       - INFLUXDB_URL=${INFLUXDB_URL}
       - INFLUXDB_ORGANIZATION=${INFLUXDB_ORGANIZATION}
       - INFLUXDB_BUCKET=${INFLUXDB_BUCKET}
-      - INFLUXDB_AUTH_TOKEN=${INFLUXDB_AUTH_TOKEN}
+      - INFLUXDB_AUTH_TOKEN=${INFLUXDB_AUTH_TOKEN}    
+    env_file:
+      - .env
     restart: always
