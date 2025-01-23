@@ -17,7 +17,9 @@ services:
       test: [ "CMD", "curl", "-f", "http://localhost:${CONSUL_PORT_WEB_UI}/" ]
       interval: 2s
       timeout: 2s
-      retries: 10
+      retries: 10      
+    env_file:
+      - .env
     restart: always
 
   rabbitmq:
@@ -38,4 +40,7 @@ services:
     environment:
       RABBITMQ_DEFAULT_USER: guest
       RABBITMQ_DEFAULT_PASS: guest
+    
+    env_file:
+      - .env
     restart: always
