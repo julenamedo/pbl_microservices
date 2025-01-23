@@ -23,6 +23,9 @@ services:
       RABBITMQ_HOST: ${CONSUL_RABBITMQ_HOST_AWS}
       UVICORN_PORT: ${UVICORN_PORT}
       SERVICE_PORT: ${ORDER_AWS_PORT}
+    
+    env_file:
+      - .env
     restart: on-failure
     #command: uvicorn app.main:app --host 0.0.0.0 --port ${UVICORN_PORT} --reload --ssl-keyfile /keys/priv.pem --ssl-certfile /keys/cert.pem
 
