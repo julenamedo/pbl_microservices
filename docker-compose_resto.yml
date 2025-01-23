@@ -21,7 +21,9 @@ services:
       CONSUL_HOST: ${CONSUL_RABBITMQ_HOST_AWS}
       RABBITMQ_HOST: ${CONSUL_RABBITMQ_HOST_AWS}
       UVICORN_PORT: ${UVICORN_PORT}
-      SERVICE_PORT: ${MACHINE_A1_AWS_PORT}
+      SERVICE_PORT: ${MACHINE_A1_AWS_PORT}    
+    env_file:
+      - .env
     restart: on-failure
     #command: uvicorn app.main:app --host 0.0.0.0 --port ${UVICORN_PORT} --reload --ssl-keyfile /keys/priv.pem --ssl-certfile /keys/cert.pem
 
@@ -45,7 +47,9 @@ services:
       CONSUL_HOST: ${CONSUL_RABBITMQ_HOST_AWS}
       RABBITMQ_HOST: ${CONSUL_RABBITMQ_HOST_AWS}
       UVICORN_PORT: ${UVICORN_PORT}
-      SERVICE_PORT: ${MACHINE_A2_AWS_PORT}
+      SERVICE_PORT: ${MACHINE_A2_AWS_PORT}   
+    env_file:
+      - .env
     restart: on-failure
 
   machine_b1:
@@ -68,7 +72,9 @@ services:
       CONSUL_HOST: ${CONSUL_RABBITMQ_HOST_AWS}
       RABBITMQ_HOST: ${CONSUL_RABBITMQ_HOST_AWS}
       UVICORN_PORT: ${UVICORN_PORT}
-      SERVICE_PORT: ${MACHINE_B1_AWS_PORT}
+      SERVICE_PORT: ${MACHINE_B1_AWS_PORT}      
+    env_file:
+      - .env
     restart: on-failure
 
   machine_b2:
@@ -91,7 +97,9 @@ services:
       CONSUL_HOST: ${CONSUL_RABBITMQ_HOST_AWS}
       RABBITMQ_HOST: ${CONSUL_RABBITMQ_HOST_AWS}
       UVICORN_PORT: ${UVICORN_PORT}
-      SERVICE_PORT: ${MACHINE_B2_AWS_PORT}
+      SERVICE_PORT: ${MACHINE_B2_AWS_PORT}      
+    env_file:
+      - .env
     restart: on-failure
 
   orders:
@@ -114,7 +122,9 @@ services:
       CONSUL_HOST: ${CONSUL_RABBITMQ_HOST_AWS}
       RABBITMQ_HOST: ${CONSUL_RABBITMQ_HOST_AWS}
       UVICORN_PORT: ${UVICORN_PORT}
-      SERVICE_PORT: ${ORDER_AWS_PORT}
+      SERVICE_PORT: ${ORDER_AWS_PORT}    
+    env_file:
+      - .env
     restart: on-failure
     #command: uvicorn app.main:app --host 0.0.0.0 --port ${UVICORN_PORT} --reload --ssl-keyfile /keys/priv.pem --ssl-certfile /keys/cert.pem
 
@@ -138,7 +148,9 @@ services:
       CONSUL_HOST: ${CONSUL_RABBITMQ_HOST_AWS}
       RABBITMQ_HOST: ${CONSUL_RABBITMQ_HOST_AWS}
       UVICORN_PORT: ${UVICORN_PORT}
-      SERVICE_PORT: ${DELIVERY_AWS_PORT}
+      SERVICE_PORT: ${DELIVERY_AWS_PORT}    
+    env_file:
+      - .env
     restart: on-failure
     #command: uvicorn app.main:app --host 0.0.0.0 --port ${UVICORN_PORT} --reload --ssl-keyfile /keys/priv.pem --ssl-certfile /keys/cert.pem
 
@@ -162,7 +174,9 @@ services:
       CONSUL_HOST: ${CONSUL_RABBITMQ_HOST_AWS}
       RABBITMQ_HOST: ${CONSUL_RABBITMQ_HOST_AWS}
       SERVICE_PORT: ${CLIENT_AWS_PORT}
-      UVICORN_PORT: ${UVICORN_PORT}
+      UVICORN_PORT: ${UVICORN_PORT}    
+    env_file:
+      - .env
     restart: on-failure
     #command: >
       #sh -c "sqlite3 /volume/monolithic.db < /volume/init_db.sql &&
@@ -188,7 +202,9 @@ services:
       CONSUL_HOST: ${CONSUL_RABBITMQ_HOST_AWS}
       RABBITMQ_HOST: ${CONSUL_RABBITMQ_HOST_AWS}
       UVICORN_PORT: ${UVICORN_PORT}
-      SERVICE_PORT: ${PAYMENT_AWS_PORT}
+      SERVICE_PORT: ${PAYMENT_AWS_PORT}    
+    env_file:
+      - .env
     restart: on-failure
     #command: sh -c "sqlite3 /volume/monolithic.db < /volume/init_db.sql &&
              #uvicorn app.main:app --host 0.0.0.0 --port ${UVICORN_PORT} --reload --ssl-keyfile /keys/priv.pem --ssl-certfile /keys/cert.pem"
@@ -213,7 +229,9 @@ services:
       CONSUL_HOST: ${CONSUL_RABBITMQ_HOST_AWS}
       RABBITMQ_HOST: ${CONSUL_RABBITMQ_HOST_AWS}
       UVICORN_PORT: ${UVICORN_PORT}
-      SERVICE_PORT: ${WAREHOUSE_AWS_PORT}
+      SERVICE_PORT: ${WAREHOUSE_AWS_PORT}    
+    env_file:
+      - .env
     restart: on-failure
 
   log:
@@ -240,6 +258,8 @@ services:
       CONSUL_HOST: ${CONSUL_RABBITMQ_HOST_AWS}
       RABBITMQ_HOST: ${CONSUL_RABBITMQ_HOST_AWS}
       UVICORN_PORT: ${UVICORN_PORT}
-      SERVICE_PORT: ${LOG_AWS_PORT}
+      SERVICE_PORT: ${LOG_AWS_PORT}    
+    env_file:
+      - .env
     restart: on-failure
     # command: uvicorn app.main:app --host 0.0.0.0 --port ${UVICORN_PORT} --ssl-keyfile /keys/server_key.pem --ssl-certfile /keys/server_cert.pem
