@@ -28,7 +28,6 @@ services:
     ports:
       - "${RABBITMQ_PORT_WEB_UI}:${RABBITMQ_PORT_WEB_UI}"
       - "${RABBITMQ_PORT_SERVICE}:${RABBITMQ_PORT_SERVICE}"
-
     volumes:
       - './keys:/etc/ssl/certs'   # Monta el directorio con los certificados
       - './rabbitmq:/etc/rabbitmq' # Configuración personalizada de RabbitMQ# Puerto para la interfaz de administración
@@ -40,7 +39,6 @@ services:
     environment:
       RABBITMQ_DEFAULT_USER: guest
       RABBITMQ_DEFAULT_PASS: guest
-    
     env_file:
       - .env
     restart: always

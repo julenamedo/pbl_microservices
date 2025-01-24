@@ -4,6 +4,7 @@ import ifaddr
 import socket
 import requests
 # Only needed for developing, on production Docker .env file is used
+from consulService.get_uuid import uuid_random_string
 load_dotenv()
 
 class Config:
@@ -15,7 +16,7 @@ class Config:
     # Como lo deployeamos en aws se le pone el puerto de aws
     PORT = int(environ.get("SERVICE_PORT", '18013'))
     SERVICE_NAME = environ.get("SERVICE_NAME", "payment")
-    SERVICE_ID = environ.get("SERVICE_ID", "payment-1")
+    SERVICE_ID = environ.get("SERVICE_ID", "payment") + "-" + uuid_random_string
     IP = None
 
     __instance = None

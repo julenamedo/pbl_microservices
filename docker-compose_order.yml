@@ -19,11 +19,12 @@ services:
       PYTHONUNBUFFERED: 1
       SQLALCHEMY_DATABASE_URL: ${SQLALCHEMY_SQLITE_DATABASE_URI}
       # CONSUL_HOST: consul
+      SERVICE_NAME: orders
+      SERVICE_ID: orders
       CONSUL_HOST: ${CONSUL_RABBITMQ_HOST_AWS}
       RABBITMQ_HOST: ${CONSUL_RABBITMQ_HOST_AWS}
       UVICORN_PORT: ${UVICORN_PORT}
       SERVICE_PORT: ${ORDER_AWS_PORT}
-    
     env_file:
       - .env
     restart: on-failure
