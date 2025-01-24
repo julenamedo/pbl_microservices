@@ -6,7 +6,7 @@ import requests
 # Only needed for developing, on production Docker .env file is used
 
 from .get_uuid import uuid_random_string
-load_dotenv()
+# load_dotenv()
 
 
 class Config:

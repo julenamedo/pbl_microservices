@@ -6,7 +6,7 @@ import requests
 # Only needed for developing, on production Docker .env file is used
 
 from .get_uuid import uuid_random_string
-load_dotenv()
+# load_dotenv()
 
 
 class Config:
@@ -46,6 +46,7 @@ class Config:
         headers = {"X-aws-ec2-metadata-token": token}
         respuesta = requests.get(url_ip, headers=headers)
         ip = respuesta.content.decode('utf-8')
+        self.logger.info(f"service ip is {ip}")
         if ip is None:
             ip = "127.0.0.1"
         self.IP = ip
