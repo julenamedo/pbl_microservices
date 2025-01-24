@@ -10,7 +10,7 @@ load_dotenv()
 
 class Config:
     """Set configuration vars from .env file."""
-    CONSUL_HOST = environ.get("CONSUL_HOST", "consul")
+    CONSUL_HOST = environ.get("CONSUL_HOST", "10.0.4.133")
     CONSUL_PORT = environ.get("CONSUL_PORT", 8500)
     CONSUL_DNS_PORT = environ.get("CONSUL_DNS_PORT", 8600)
     # Como lo deployeamos en aws se le pone el puerto de aws
