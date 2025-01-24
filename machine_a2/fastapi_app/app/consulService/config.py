@@ -34,7 +34,7 @@ class Config:
             self.get_ip()
             Config.__instance = self
 
-def get_ip(self):
+    def get_ip(self):
         # AWS EC2 Metadata Service to get the local IP
         # TODO: Cambiar IP
         url_token = "http://169.254.169.254/latest/api/token"

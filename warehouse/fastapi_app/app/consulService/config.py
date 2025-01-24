@@ -35,34 +35,34 @@ class Config:
             Config.__instance = self
 
 def get_ip(self):
-        # AWS EC2 Metadata Service to get the local IP
+    # AWS EC2 Metadata Service to get the local IP
+    # TODO: Cambiar IP
+    url_token = "http://169.254.169.254/latest/api/token"
+    headers = {"X-aws-ec2-metadata-token-ttl-seconds": "21600"}
+    try:
+        response = requests.put(url_token, headers=headers)
+        token = response.content.decode("utf-8")
+
+        # Use the token to get the local IP
         # TODO: Cambiar IP
-        url_token = "http://169.254.169.254/latest/api/token"
-        headers = {"X-aws-ec2-metadata-token-ttl-seconds": "21600"}
-        try:
-            response = requests.put(url_token, headers=headers)
-            token = response.content.decode("utf-8")
+        url_ip = "http://169.254.169.254/latest/meta-data/local-ipv4"
+        headers = {"X-aws-ec2-metadata-token": token}
+        respuesta = requests.get(url_ip, headers=headers)
+        self.IP = respuesta.content.decode("utf-8")
+    except requests.RequestException as e:
+        print(f"Error al obtener la IP desde AWS Metadata: {e}")
+        self.IP = None  # Fall back if request fails
 
-            # Use the token to get the local IP
-            # TODO: Cambiar IP
-            url_ip = "http://169.254.169.254/latest/meta-data/local-ipv4"
-            headers = {"X-aws-ec2-metadata-token": token}
-            respuesta = requests.get(url_ip, headers=headers)
-            self.IP = respuesta.content.decode("utf-8")
-        except requests.RequestException as e:
-            print(f"Error al obtener la IP desde AWS Metadata: {e}")
-            self.IP = None  # Fall back if request fails
+    # Default to localhost if IP is None
+    if not self.IP:
+        self.IP = "127.0.0.1"
 
-        # Default to localhost if IP is None
-        if not self.IP:
-            self.IP = "127.0.0.1"
+@staticmethod
+def get_adapter_ip(nice_name):
+    adapters = ifaddr.get_adapters()
 
-    @staticmethod
-    def get_adapter_ip(nice_name):
-        adapters = ifaddr.get_adapters()
+    for adapter in adapters:
+        if adapter.nice_name == nice_name and len(adapter.ips) > 0:
+            return adapter.ips[0].ip
 
-        for adapter in adapters:
-            if adapter.nice_name == nice_name and len(adapter.ips) > 0:
-                return adapter.ips[0].ip
-
-        return None
+    return None
