@@ -65,6 +65,7 @@ async def startup_event():
         logger.info("Database tables created successfully")
         await rabbitmq.subscribe_channel()
         await rabbitmq_publish_logs.subscribe_channel()
+        register_consul_service()
         asyncio.create_task(rabbitmq.subscribe_command_payment_check())
         asyncio.create_task(rabbitmq.subscribe_payment_revert_order_cancel())
         asyncio.create_task(rabbitmq.subscribe_payment_check_order_cancel())
