@@ -4,7 +4,7 @@ import ifaddr
 import socket
 import requests
 # Only needed for developing, on production Docker .env file is used
-from consulService.get_uuid import uuid_random_string
+from .get_uuid import uuid_random_string
 load_dotenv()
 
 class Config:
