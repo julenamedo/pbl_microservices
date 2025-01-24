@@ -36,27 +36,18 @@ class Config:
             Config.__instance = self
 
     def get_ip(self):
-        # AWS EC2 Metadata Service to get the local IP
-        # TODO: Cambiar IP
         url_token = "http://169.254.169.254/latest/api/token"
         headers = {"X-aws-ec2-metadata-token-ttl-seconds": "21600"}
-        try:
-            response = requests.put(url_token, headers=headers)
-            token = response.content.decode("utf-8")
-
-            # Use the token to get the local IP
-            # TODO: Cambiar IP
-            url_ip = "http://169.254.169.254/latest/meta-data/local-ipv4"
-            headers = {"X-aws-ec2-metadata-token": token}
-            respuesta = requests.get(url_ip, headers=headers)
-            self.IP = respuesta.content.decode("utf-8")
-        except requests.RequestException as e:
-            print(f"Error al obtener la IP desde AWS Metadata: {e}")
-            self.IP = None  # Fall back if request fails
-
-        # Default to localhost if IP is None
-        if not self.IP:
-            self.IP = "127.0.0.1"
+        response = requests.put(url_token, headers=headers)
+        token = response.content.decode('utf-8')
+        # Usa el token para obtener la IP pública
+        url_ip = "http://169.254.169.254/latest/meta-data/local-ipv4"
+        headers = {"X-aws-ec2-metadata-token": token}
+        respuesta = requests.get(url_ip, headers=headers)
+        ip = respuesta.content.decode('utf-8')
+        if ip is None:
+            ip = "127.0.0.1"
+        self.IP = ip
 
     @staticmethod
     def get_adapter_ip(nice_name):
