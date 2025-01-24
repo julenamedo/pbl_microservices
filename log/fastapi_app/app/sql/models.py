@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """Database models definitions. Table representations as class."""
-from sqlalchemy import Column, DateTime, Integer, String, TEXT, ForeignKey
+from sqlalchemy import Column, DateTime, Integer, String, TEXT, ForeignKey, DeclarativeBase, Mapped, mapped_column
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from .database import Base
@@ -83,5 +83,8 @@ class Log(BaseModel):
 
 
 class BlockIPRequest(BaseModel):
-    ip_address: str
-    reason: str = "none"
+    __tablename__ = "block_ip_requests"
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    ip_address: Mapped[str] = mapped_column(String, nullable=False)
+    reason: Mapped[str] = mapped_column(String, default="none")
