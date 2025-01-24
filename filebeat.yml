@@ -1,0 +1,23 @@
+setup.template.name: "haproxy-logs"
+setup.template.pattern: "haproxy-logs-*"
+setup.template.enabled: true
+
+filebeat.inputs:
+  - type: syslog
+    protocol.udp:
+      host: "0.0.0.0:514"
+    processors:
+      - dissect:
+          tokenizer: "haproxy[%{process_id}]: %{cleaned_message}"
+          field: "message"
+          target_prefix: ""
+      - decode_json_fields:
+          fields: ["cleaned_message"]
+          target: ""
+          overwrite_keys: true
+
+output.elasticsearch:
+  hosts: ["http://elasticsearch:9200"]
+  username: "elastic"
+  password: "admin"
+  index: "haproxy-logs-%{+yyyy.MM.dd}"
