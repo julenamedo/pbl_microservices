@@ -56,6 +56,7 @@ async def subscribe_channel():
         set_rabbitmq_status(True)
         logger.info("rabbitmq_working : " + str(rabbitmq_working))
         logger.info(f"Intercambio '{exchange_name}' declarado con éxito")
+        await channel.set_qos(1)
 
     except Exception as e:
         logger.error(f"Error durante la suscripción: {e}")
