@@ -2,6 +2,7 @@ from os import environ
 from dotenv import load_dotenv
 import ifaddr
 import socket
+import requests
 # Only needed for developing, on production Docker .env file is used
 load_dotenv()
 
@@ -33,18 +34,24 @@ class Config:
             Config.__instance = self
 
     def get_ip(self):
-        if self.SERVICE_NAME == "consul":
-            # Resolver el nombre de Consul a una IP válida
-            try:
-                resolved_ip = socket.gethostbyname(self.CONSUL_HOST)
-                self.IP = resolved_ip
-            except socket.gaierror as e:
-                self.IP = "127.0.0.1"  # Asignar por defecto si no puede resolver
-                print(f"Error resolviendo {self.CONSUL_HOST}: {e}")
-        else:
-            self.IP = Config.get_adapter_ip("eth0")
-            if not self.IP:
-                self.IP = "127.0.0.1"
+        # AWS EC2 Metadata Service to get the local IP
+        # TODO: Cambiar IP
+        url_token = "http://169.254.169.254/latest/api/token"
+        headers = {"X-aws-ec2-metadata-token-ttl-seconds": "21600"}
+        try:
+            response = requests.put(url_token, headers=headers)
+            token = response.content.decode("utf-8")
+
+            # Use the token to get the local IP
+            # TODO: Cambiar IP
+            url_ip = "http://169.254.169.254/latest/meta-data/local-ipv4"
+            headers = {"X-aws-ec2-metadata-token": token}
+            respuesta = requests.get(url_ip, headers=headers)
+            self.IP = respuesta.content.decode("utf-8")
+        except requests.RequestException as e:
+            print(f"Error al obtener la IP desde AWS Metadata: {e}")
+            self.IP = None  # Fall back if request fails
+
 
     @staticmethod
     def get_adapter_ip(nice_name):
