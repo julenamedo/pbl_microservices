@@ -317,6 +317,19 @@ services:
       --tls-cert=/keys/server_cert.pem
       --tls-key=/keys/server_key.pem
 
+  filebeat:
+    image: docker.elastic.co/beats/filebeat:8.10.0
+    container_name: filebeat
+    volumes:
+      - ./filebeat.yml:/usr/share/filebeat/filebeat.yml
+      - ./logs:/var/log/haproxy:ro
+    environment:
+      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
+    depends_on:
+      - elasticsearch
+      - haproxy
+    restart: always
+
   haproxy:
     image: haproxy:latest
     container_name: haproxy
