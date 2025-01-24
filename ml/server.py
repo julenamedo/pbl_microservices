@@ -1,5 +1,5 @@
 import time
-import requests
+import logging
 import pandas as pd
 import pickle
 from sklearn.preprocessing import StandardScaler, LabelEncoder
@@ -11,6 +11,10 @@ import joblib
 # Initialize Elasticsearch and FastAPI
 es = Elasticsearch(["http://localhost:9200"], http_auth=("elastic", "admin"))
 app = FastAPI()
+
+# Configure logging
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(message)s")
+logger = logging.getLogger(__name__)
 
 # Load pre-trained models and encoders
 with open('models/path_encoder.pkl', 'rb') as file:
@@ -27,6 +31,9 @@ scaler = StandardScaler()
 # In-memory storage for malicious IPs
 malicious_ips = set()
 
+# File to log results
+log_file = "analysis_results.log"
+
 # Fetch logs from Elasticsearch
 def fetch_logs(last_seconds):
     now = datetime.utcnow()
@@ -42,12 +49,15 @@ def fetch_logs(last_seconds):
         }
     }
     response = es.search(index="haproxy-logs-*", body=query, size=10000)
-    return [hit["_source"] for hit in response["hits"]["hits"]]
+    logs = [hit["_source"] for hit in response["hits"]["hits"]]
+    logger.info(f"Fetched {len(logs)} logs from Elasticsearch for the last {last_seconds} seconds")
+    return logs
 
 # Preprocess logs
 def preprocess_logs(logs):
     dataset = pd.DataFrame(logs)
     if dataset.empty:
+        logger.info("No logs to process.")
         return None
 
     # Drop unnecessary columns
@@ -62,26 +72,24 @@ def preprocess_logs(logs):
             dataset[col] = 0  # Add missing columns
     dataset = dataset[one_hot_columns]  # Ensure column order matches
 
+    logger.info("Logs preprocessed successfully.")
     return dataset
-
-# Aggregate logs
-def aggregate_logs(dataset, window):
-    dataset = dataset.set_index("timestamp")
-    agg_data = dataset.rolling(f"{window}s").sum()
-    agg_data["num_request_1s"] = dataset.rolling(f"{window}s").size()
-    return agg_data.reset_index()
 
 # Predict malicious IPs
 def predict_malicious_ips(dataset, raw_logs):
     predictions = model.predict(dataset)
-    mapping = {0: 0, 1: 1, 2: 0, 3: 1, 4: 1, 5: 0, 6: 0, 7: 0}
-    malicious = [raw_logs[i]["src_ip"] for i, pred in enumerate(predictions) if mapping[pred] == 1]
+    mapping = {0: "benign", 1: "malicious", 2: "benign", 3: "malicious", 4: "malicious", 5: "benign", 6: "benign", 7: "benign"}
 
-    # Save malicious IPs
-    for ip in malicious:
-        malicious_ips.add(ip)
-        # Store in Elasticsearch
-        es.index(index="malicious-ips", body={"ip": ip, "timestamp": datetime.utcnow().isoformat()})
+    with open(log_file, "a") as log:
+        for i, pred in enumerate(predictions):
+            result = mapping[pred]
+            log_entry = f"Analysing packet from src_ip={raw_logs[i]['src_ip']}: {result}"
+            logger.info(log_entry)  # Logs to console
+            log.write(f"{datetime.utcnow().isoformat()} - {log_entry}\n")  # Logs to file
+
+            if result == "malicious":
+                malicious_ips.add(raw_logs[i]["src_ip"])
+                es.index(index="malicious-ips", body={"ip": raw_logs[i]["src_ip"], "timestamp": datetime.utcnow().isoformat()})
 
 # Periodic processing
 def process_logs():
@@ -90,11 +98,13 @@ def process_logs():
         logs_3s = fetch_logs(3)
 
         if logs_1s:
+            logger.info(f"Processing {len(logs_1s)} logs for 1s window")
             dataset_1s = preprocess_logs(logs_1s)
             if dataset_1s is not None:
                 predict_malicious_ips(dataset_1s, logs_1s)
 
         if logs_3s:
+            logger.info(f"Processing {len(logs_3s)} logs for 3s window")
             dataset_3s = preprocess_logs(logs_3s)
             if dataset_3s is not None:
                 predict_malicious_ips(dataset_3s, logs_3s)
