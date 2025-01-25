@@ -18,7 +18,8 @@ services:
       - './haproxy.cfg:/usr/local/etc/haproxy/haproxy.cfg'
       - ./haproxy.cfg/503_error.html:/usr/local/etc/haproxy/503_error.html
       - './keys:/keys'
-
+  depends_on:
+        - filebeat
     env_file:
       - .env
 
@@ -30,6 +31,5 @@ services:
       - ./logs:/var/log/haproxy:ro
     environment:
       - ELASTICSEARCH_HOSTS=http://10.0.6.139:9200
-    depends_on:
-      - haproxy
+    
     restart: always
