@@ -18,8 +18,8 @@ services:
       - './haproxy.cfg:/usr/local/etc/haproxy/haproxy.cfg'
       - ./haproxy.cfg/503_error.html:/usr/local/etc/haproxy/503_error.html
       - './keys:/keys'
-  depends_on:
-        - filebeat
+    depends_on:
+      - filebeat
     env_file:
       - .env
 
