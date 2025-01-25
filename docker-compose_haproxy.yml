@@ -18,10 +18,6 @@ services:
       - './haproxy.cfg:/usr/local/etc/haproxy/haproxy.cfg'
       - ./haproxy.cfg/503_error.html:/usr/local/etc/haproxy/503_error.html
       - './keys:/keys'
-    entrypoint: >
-      sh -c "
-      chmod 640 /keys/cert.pem /keys/haproxy.pem &&
-      chown haproxy:haproxy /keys/haproxy.pem"
-    privileged: true
+
     env_file:
       - .env
