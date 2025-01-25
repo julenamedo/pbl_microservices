@@ -20,7 +20,7 @@ services:
       - './keys:/keys'
     entrypoint: >
       sh -c "
-      chmod 640 /keys/cert.pem /keys/priv.pem &&
-      chown haproxy:haproxy /keys/cert.pem /keys/priv.pem
+      chmod 640 /keys/cert.pem /keys/haproxy.pem &&
+      chown haproxy:haproxy /keys/haproxy.pem
     env_file:
       - .env
