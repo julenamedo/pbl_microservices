@@ -8,7 +8,6 @@ from contextlib import asynccontextmanager
 from .consulService.BLConsul import register_consul_service, unregister_consul_service
 
 from fastapi import FastAPI
-from app.sql import models
 from app.sql import database
 from app.routers import main_router
 from app.routers import rabbitmq
@@ -62,8 +61,6 @@ app.include_router(main_router.router)
 async def startup_event():
     try:
         """Configuration to be executed when FastAPI server starts."""
-        async with database.engine.begin() as conn:
-            await conn.run_sync(models.Base.metadata.create_all)
         await rabbitmq.subscribe_channel()
         await rabbitmq_publish_logs.subscribe_channel()
 

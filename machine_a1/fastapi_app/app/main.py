@@ -11,7 +11,6 @@ from fastapi import FastAPI
 from app.routers import main_router
 from app.routers import rabbitmq
 from app.routers import rabbitmq_publish_logs
-from app.sql import models
 from app.sql import database
 import asyncio
 from global_variables.global_variables import update_system_resources_periodically, set_rabbitmq_status, get_rabbitmq_status
@@ -62,8 +61,6 @@ app.include_router(main_router.router)
 async def startup_event():
     try:
         """Configuration to be executed when FastAPI server starts."""
-        async with database.engine.begin() as conn:
-            await conn.run_sync(models.Base.metadata.create_all)
         await rabbitmq.subscribe_channel()
         await rabbitmq_publish_logs.subscribe_channel()
 

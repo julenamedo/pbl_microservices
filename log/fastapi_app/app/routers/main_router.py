@@ -242,29 +242,3 @@ async def get_logs(current_user: Dict = Depends(get_current_user)):
             detail="Internal server error while retrieving logs."
         )
 
-
-# Blocked IP-s
-@router.get("/blocked_ips", tags=["Blocked IPs"])
-async def get_blocked_ips(current_user: Dict = Depends(get_current_user)):
-    """
-    Recupera las IPs bloqueadas desde InfluxDB.
-    """
-    try:
-        blocked_ips = await crud.get_blocked_ips()
-        return {"blocked_ips": blocked_ips}
-    except Exception as e:
-        logger.error(f"Error al recuperar IPs bloqueadas: {e}")
-        raise HTTPException(status_code=500, detail=f"Error al recuperar IPs bloqueadas: {e}")
-
-
-@router.post("/block_ip", tags=["Blocked IPs"])
-async def block_ip(request: models.BlockIPRequest, current_user: Dict = Depends(get_current_user)):
-    """
-    Registra una nueva IP bloqueada en InfluxDB.
-    """
-    try:
-        await crud.register_blocked_ip(request.ip_address, request.reason)
-        return {"message": f"IP {request.ip_address} bloqueada con éxito."}
-    except Exception as e:
-        logger.error(f"Error al bloquear IP: {e}")
-        raise HTTPException(status_code=500, detail=f"Error al bloquear IP: {e}")

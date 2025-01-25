@@ -15,8 +15,7 @@ from .consulService.BLConsul import register_consul_service, unregister_consul_s
 from fastapi import FastAPI
 import requests
 from app.routers import main_router, rabbitmq, rabbitmq_publish_logs
-from app.sql import models
-from app.sql import database
+from app.sql import database, models
 import global_variables
 from global_variables.global_variables import update_system_resources_periodically, set_rabbitmq_status, get_rabbitmq_status
 

@@ -7,6 +7,8 @@ import ssl
 from ssl import CERT_NONE
 from influxdb_client import InfluxDBClient, Point, WritePrecision, WriteOptions
 import ssl
+from sqlalchemy.orm import DeclarativeBase
+
 from ssl import CERT_NONE
 from influxdb_client import InfluxDBClient, Point, WritePrecision, WriteOptions
 
@@ -21,6 +23,7 @@ INFLUXDB_BUCKET = "your-bucket"
 INFLUXDB_USERNAME = "admin"
 INFLUXDB_PASSWORD = "adminpassword"
 CA_CERT_PATH = "/keys/ca_cert.pem"
+
 
 # Initialize the InfluxDB client
 influxdb_client = InfluxDBClient(
