@@ -17,7 +17,7 @@ filebeat.inputs:
           overwrite_keys: true
 
 output.elasticsearch:
-  hosts: ["http://elasticsearch:9200"]
+  hosts: ["http://10.0.6.139:9200"]
   username: "elastic"
   password: "admin"
   index: "haproxy-logs-%{+yyyy.MM.dd}"
