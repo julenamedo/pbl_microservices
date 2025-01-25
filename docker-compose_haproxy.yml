@@ -21,3 +21,16 @@ services:
 
     env_file:
       - .env
+
+  filebeat:
+    image: docker.elastic.co/beats/filebeat:8.10.0
+    container_name: filebeat
+    volumes:
+      - ./filebeat.yml:/usr/share/filebeat/filebeat.yml
+      - ./logs:/var/log/haproxy:ro
+    environment:
+      - ELASTICSEARCH_HOSTS=http://10.0.6.139:9200
+    depends_on:
+      - elasticsearch
+      - haproxy
+    restart: always
