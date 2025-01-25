@@ -13,9 +13,14 @@ services:
       HAPROXY_PORT: ${HAPROXY_PORT}
       CONSUL_PORT_SERVICE: ${CONSUL_PORT_SERVICE}
       GRAFANA_PORT: ${GRAFANA_PORT}
+      HAPROXY_STATS_PORT: ${HAPROXY_STATS_PORT}
     volumes:
       - './haproxy.cfg:/usr/local/etc/haproxy/haproxy.cfg'
       - ./haproxy.cfg/503_error.html:/usr/local/etc/haproxy/503_error.html
       - './keys:/keys'
+    entrypoint: >
+      sh -c "
+      chmod 640 /keys/cert.pem /keys/priv.pem &&
+      chown haproxy:haproxy /keys/cert.pem /keys/priv.pem
     env_file:
       - .env
