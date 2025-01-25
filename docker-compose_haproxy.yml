@@ -31,6 +31,5 @@ services:
     environment:
       - ELASTICSEARCH_HOSTS=http://10.0.6.139:9200
     depends_on:
-      - elasticsearch
       - haproxy
     restart: always
