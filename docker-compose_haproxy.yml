@@ -22,5 +22,6 @@ services:
       sh -c "
       chmod 640 /keys/cert.pem /keys/haproxy.pem &&
       chown haproxy:haproxy /keys/haproxy.pem"
+    privileged: true
     env_file:
       - .env
