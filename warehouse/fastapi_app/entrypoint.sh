@@ -4,7 +4,9 @@ echo "Service: ${SERVICE_NAME}"
 IP=$(hostname -i)
 export IP
 echo "IP: ${IP}"
-
+# Asegurarse de que /volume tenga permisos 777
+echo "Setting permissions for /volume..."
+chmod -R 777 /volume
 # Inicialización de la base de datos SQLite
 echo "Initializing SQLite database..."
 sqlite3 /volume/monolithic.db < /volume/init_db.sql

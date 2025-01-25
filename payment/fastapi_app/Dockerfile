@@ -9,6 +9,8 @@ RUN pip install --no-cache-dir --upgrade pip;
 
 COPY requirements.txt /requirements.txt
 RUN pip install -r /requirements.txt
+# Creamos el directorio del volumen y le damos permisos 777
+RUN mkdir -p /volume && chmod 777 /volume
 
 # We will be working on this folder
 WORKDIR /home/pyuser/code
