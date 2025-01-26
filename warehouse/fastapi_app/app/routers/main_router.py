@@ -208,7 +208,7 @@ async def get_warehouse(
     id_order: int = Query(None, description="Order ID"),
     piece_type: str = Query(None, description="Piece type"),
     db: AsyncSession = Depends(dependencies.get_db),
-    current_user: Dict = Depends(get_current_user),
+    current_user: dict = Depends(get_current_user),
 
 ):
 
